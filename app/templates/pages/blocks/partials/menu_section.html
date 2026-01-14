@@ -1,0 +1,41 @@
+{% load i18n %}
+<div class="page-menu__section depth-{{ category.depth }}">
+  <h3 class="page-menu__heading">{{ category.name }}</h3>
+  {% if category.items %}
+    <ul class="page-menu__items">
+      {% for item in category.items %}
+        <li class="page-menu__item">
+          <div class="page-menu__item-header">
+            <span class="page-menu__item-name">{{ item.name }}</span>
+            {% if item.variants %}
+              <span class="page-menu__item-price">
+                {% for variant in item.variants %}
+                  <span class="price">
+                    {{ variant.price }}
+                    {% if variant.label %}<small>{{ variant.label }}</small>{% endif %}
+                    {% if not forloop.last %} · {% endif %}
+                  </span>
+                {% endfor %}
+              </span>
+            {% endif %}
+          </div>
+          {% if item.description %}<p class="page-menu__item-desc">{{ item.description }}</p>{% endif %}
+          {% if item.flags.vegan or item.flags.vegetarian or item.flags.gluten_free %}
+            <p class="page-menu__flags">
+              {% if item.flags.vegan %}<span>{% trans "Vegan" %}</span>{% endif %}
+              {% if item.flags.vegetarian %}<span>{% trans "Vegetarian" %}</span>{% endif %}
+              {% if item.flags.gluten_free %}<span>{% trans "Gluten free" %}</span>{% endif %}
+            </p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if category.children %}
+    <div class="page-menu__children">
+      {% for child in category.children %}
+        {% include "pages/blocks/partials/menu_section.html" with category=child props=props %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,137 @@
+{% extends "cms/base_cms.html" %}
+{% load setup_tags i18n %}
+
+{% block content %}
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h1 class="mb-2" style="margin:0;">{% trans "Artists / Bands" %}</h1>
+    {% visibility_cog "cms.bands.prices" "Show prices on band cards" %}
+  </div>
+
+  <form method="get" class="mb-2" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+    <input type="search" name="q" value="{{ q }}" placeholder="{% trans 'Search by name…' %}" class="form-control" style="min-width:240px;">
+    <select name="type" class="form-select">
+      <option value="">{% trans "All types" %}</option>
+      <option value="band" {% if f_type == "band" %}selected{% endif %}>{% trans "Band" %}</option>
+      <option value="dj" {% if f_type == "dj" %}selected{% endif %}>{% trans "DJ" %}</option>
+      <option value="solo" {% if f_type == "solo" %}selected{% endif %}>{% trans "Solo artist" %}</option>
+    </select>
+    <select name="pub" class="form-select">
+      <option value="">{% trans "All" %}</option>
+      <option value="1" {% if f_pub == "1" %}selected{% endif %}>{% trans "Published" %}</option>
+      <option value="0" {% if f_pub == "0" %}selected{% endif %}>{% trans "Drafts" %}</option>
+    </select>
+    <button class="btn btn-primary">{% trans "Filter" %}</button>
+    <a class="btn btn-secondary" href="{% url 'bands:new' %}">{% trans "+ New" %}</a>
+  </form>
+
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+    {% for b in bands %}
+      <div class="card" style="padding:12px; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex; gap:.75rem;">
+          {% if b.photo %}
+            <img src="{{ b.photo.url }}" alt="{{ b.name }}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;">
+          {% else %}
+            <div style="width:64px;height:64px;border-radius:8px;background:#f0f0f0;display:grid;place-items:center;">🎵</div>
+          {% endif %}
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;gap:.5rem;">
+              <strong>{{ b.name }}</strong>
+              <span title="{% trans 'Status' %}">{% if b.is_published %}✅{% else %}📝{% endif %}</span>
+            </div>
+            <div style="font-size:.9rem;color:#666;">
+              {{ b.get_performer_type_display }}
+              {% if b.last_performed_on %} · {{ b.last_performed_on|date:"d-m-Y" }}{% endif %}
+            </div>
+            {% if b.genre %}
+              <div style="font-size:.85rem;color:#888;">Genre: {{ b.genre }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if b.description %}
+          <div class="desc-preview" style="margin-top:.5rem;font-size:.9rem;color:#bcb5b5;;max-height:3.2em;overflow:hidden;">
+            {{ b.description }}
+          </div>
+          <button type="button" class="btn btn-sm btn-link p-0 toggle-desc" style="font-size:.85rem;">{% trans "Show more" %}</button>
+        {% endif %}
+
+        {% if request.user|allow_for:"cms.bands.prices" %}
+          <div class="nav-inline" style="margin-top:.75rem;">
+            <div style="border:1px solid #e6e6e6;border-radius:8px;padding:.6rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+              <div style="font-size:.92rem;">
+                {% if b.compensation_type == "fixed" and b.fee_amount %}
+                  <span class="badge" style="border:1px solid #d2e9ff;padding:.15rem .4rem;border-radius:.5rem;">{% trans "Fixed" %}</span>
+                  <strong>{{ sitecfg.currency_symbol|default:"€" }} {{ b.fee_amount|floatformat:2 }}</strong>
+                {% elif b.compensation_type == "door" %}
+                  <span class="badge" style="border:1px solid #ffdcbf3d;padding:.15rem .4rem;border-radius:.5rem;">{% trans "Door" %}</span>
+                  {% if b.entry_price %}Entry: {{ sitecfg.currency_symbol|default:"€" }} {{ b.entry_price|floatformat:2 }}{% endif %}
+                  {% if b.payout_amount %}{% if b.entry_price %} · {% endif %}Payout: {{ sitecfg.currency_symbol|default:"€" }} {{ b.payout_amount|floatformat:2 }}{% endif %}
+                {% else %}
+                  <span class="badge" style="border:1px solid #d6f0d630;padding:.15rem .4rem;border-radius:.5rem;">{% trans "Unpaid" %}</span>
+                {% endif %}
+              </div>
+              {% visibility_cog_inline "cms.bands.prices" "Show prices on this card" %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if request.user|allow_for:"cms.bands.contact" %}
+          <div class="nav-inline" style="margin-top:.6rem;font-size:.85rem;">
+            <strong>{% trans "Contact:" %}</strong> {{ b.contact_type }} – {{ b.contact_value }}
+            {% if b.contact_notes %}({{ b.contact_notes }}){% endif %}
+            {% visibility_cog_inline "cms.bands.contact" "Show contact" %}
+          </div>
+        {% endif %}
+
+        {% if request.user|allow_for:"cms.bands.socials" %}
+          <div class="nav-inline" style="margin-top:.6rem;font-size:.85rem;">
+            <strong>{% trans "Socials:" %}</strong>
+            {% if b.website %}<a href="{{ b.website }}" target="_blank">🌐</a>{% endif %}
+            {% if b.instagram %}<a href="{{ b.instagram }}" target="_blank">{% trans "IG" %}</a>{% endif %}
+            {% if b.facebook %}<a href="{{ b.facebook }}" target="_blank">{% trans "FB" %}</a>{% endif %}
+            {% if b.youtube %}<a href="{{ b.youtube }}" target="_blank">{% trans "YT" %}</a>{% endif %}
+            {% if b.bandcamp %}<a href="{{ b.bandcamp }}" target="_blank">{% trans "BC" %}</a>{% endif %}
+            {% if b.soundcloud %}<a href="{{ b.soundcloud }}" target="_blank">{% trans "SC" %}</a>{% endif %}
+            {% visibility_cog_inline "cms.bands.socials" "Show socials" %}
+          </div>
+        {% endif %}
+
+        {% if request.user|allow_for:"cms.bands.internal" %}
+          <div class="nav-inline" style="margin-top:.6rem;font-size:.85rem;color:#777;">
+            <strong>{% trans "Notes:" %}</strong> {{ b.comment_internal|default:"—" }}
+            {% visibility_cog_inline "cms.bands.internal" "Show internal notes" %}
+          </div>
+        {% endif %}
+
+        <div style="display:flex; gap:.5rem; margin-top:.75rem; justify-content:flex-end;">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'bands:edit' b.pk %}">{% trans "Edit" %}</a>
+          {% if b.is_published %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ b.get_absolute_url }}" target="_blank">{% trans "View" %}</a>
+          {% endif %}
+          <a class="btn btn-sm btn-outline-danger" href="{% url 'bands:delete' b.pk %}">{% trans "Delete" %}</a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="text-muted">{% trans "No results." %}</div>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".toggle-desc").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const preview = btn.previousElementSibling;
+          if (preview.style.maxHeight) {
+            preview.style.maxHeight = "";
+            preview.style.overflow = "";
+            btn.textContent = "Show more";
+          } else {
+            preview.style.maxHeight = "3.2em";
+            preview.style.overflow = "hidden";
+            btn.textContent = "Show less";
+          }
+        });
+      });
+    });
+  </script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "cms/base_public.html" %}
+{% load i18n %}
+{% block content %}
+  <div class="container" style="max-width:640px;padding:2rem 1rem;">
+    <h1>{% trans "All set ✅" %}</h1>
+    <p>{% trans "Your account is ready. Head to the dashboard." %}</p>
+    <p><a class="btn btn-primary" href="/cms/dashboard/">{% trans "Go to Dashboard" %}</a></p>
+  </div>
+{% endblock %}

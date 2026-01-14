@@ -1,0 +1,64 @@
+{% load inline_edit i18n %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<section class="page-block page-block--media-player" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    {% if props.title or props.subtitle %}
+      <div class="page-block__header">
+        {% if props.title %}
+          {% with style=props.style_inline_targets.title %}
+            <h2 {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'title' %}>{{ props.title|inline_richtext }}</h2>
+          {% endwith %}
+        {% endif %}
+        {% if props.subtitle %}
+          {% with style=props.style_inline_targets.subtitle %}
+            <p class="muted" {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'subtitle' %}>{{ props.subtitle|inline_richtext }}</p>
+          {% endwith %}
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if items %}
+      <div class="page-media-player page-media-player--{{ layout }}">
+        {% for item in items %}
+          <article class="page-media-card">
+            <div class="page-media-card__body">
+              <p class="page-media-card__badge">{{ item.kind_label|default:"Media" }}</p>
+              <h3>{{ item.display_title }}</h3>
+              {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+              {% if item.size_label or item.duration_label %}
+                <small class="muted">
+                  {% if item.size_label %}{{ item.size_label }}{% endif %}
+                  {% if item.size_label and item.duration_label %} · {% endif %}
+                  {% if item.duration_label %}{{ item.duration_label }}{% endif %}
+                </small>
+              {% endif %}
+            </div>
+            <div class="page-media-card__media">
+              {% if item.kind == 'audio' %}
+                <audio controls preload="metadata">
+                  <source src="{{ item.url }}">
+                  Your browser does not support the audio element.
+                </audio>
+              {% elif item.kind == 'video' %}
+                <video controls preload="metadata">
+                  <source src="{{ item.url }}">
+                  Your browser does not support the video tag.
+                </video>
+              {% else %}
+                <a class="btn btn-sm" href="{{ item.url }}" target="_blank" rel="noopener">{% trans "Open media" %}</a>
+              {% endif %}
+              {% if show_downloads %}
+                <a class="btn btn-xs btn-outline-secondary" href="{{ item.url }}" download>{% trans "Download" %}</a>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">{% trans "No media added yet." %}</p>
+    {% endif %}
+  </div>
+</section>

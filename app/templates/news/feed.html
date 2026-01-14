@@ -1,0 +1,155 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n setup_tags %}
+{% block title %}{% trans "News" %} · CMS{% endblock %}
+{% block content %}
+<div class="news-head">
+  <div>
+    <h1>{% trans "News & Polls" %}</h1>
+    <p class="muted">{% trans "Share internal updates, publish public news, and gather quick feedback." %}</p>
+  </div>
+  <div class="news-head__actions">
+    <a class="btn btn-sm" href="{{ post_create_url }}">{% trans "＋ New post" %}</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ poll_create_url }}">{% trans "＋ New poll" %}</a>
+  </div>
+</div>
+
+{% if feed_items %}
+  <div class="news-feed">
+    {% for item in feed_items %}
+      {% if item.type == "post" %}
+        {% with post=item.post %}
+        <article class="news-card">
+          <header class="news-card__header">
+            <div>
+              <p class="news-card__category">
+                {% if post.visibility == "public" %}
+                  <span class="badge badge--public">{% trans "Public" %}</span>
+                {% else %}
+                  <span class="badge badge--internal">{% trans "Internal" %}</span>
+                {% endif %}
+                {% if post.category %}<span class="badge badge--ghost">{{ post.category }}</span>{% endif %}
+                {% if post.status != 'published' %}
+                  <span class="badge badge--draft">{% trans "Draft" %}</span>
+                {% endif %}
+              </p>
+              <h2>{{ post.title }}</h2>
+              {% if post.summary %}<p class="muted">{{ post.summary }}</p>{% endif %}
+            </div>
+            <div class="news-card__meta">
+              <time datetime="{{ post.display_timestamp|date:'c' }}">{{ post.display_timestamp|date:"M d, Y H:i" }}</time>
+              <div class="news-card__actions nav-inline">
+                {% if request.user|allow_for:"cms.news.posts.edit" %}
+                  <a class="btn btn-xs" href="{% url 'news:post_edit' post.pk %}">{% trans "Edit" %}</a>
+                {% endif %}
+                {% if request.user|allow_for:"cms.news.posts.delete" %}
+                  {% trans "Delete this post?" as delete_post_confirm %}
+                  <form method="post"
+                        action="{% url 'news:post_delete' post.pk %}"
+                        onsubmit="return confirm('{{ delete_post_confirm|escapejs }}');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-outline-danger">{% trans "Delete" %}</button>
+                  </form>
+                {% endif %}
+                {% if request.real_user and request.real_user.is_superuser %}
+                  {% visibility_cog_inline "cms.news.posts.edit" "Show/hide News post edit buttons" target='.news-card__actions' %}
+                  {% visibility_cog_inline "cms.news.posts.delete" "Show/hide News post delete buttons" target='.news-card__actions' %}
+                {% endif %}
+              </div>
+            </div>
+          </header>
+          <div class="news-card__body">
+            {{ post.body|safe }}
+          </div>
+        </article>
+        {% endwith %}
+      {% elif item.type == "poll" %}
+        {% with poll=item.poll state=item.state %}
+        <article id="poll-{{ poll.pk }}" class="news-card poll-card">
+          <header class="news-card__header">
+            <div>
+              <span class="badge badge--poll">{% trans "Poll" %}</span>
+              <h2>{{ poll.question }}</h2>
+              {% if poll.description %}<p class="muted">{{ poll.description }}</p>{% endif %}
+            </div>
+            <div class="news-card__meta">
+              <time datetime="{{ poll.created_at|date:'c' }}">{{ poll.created_at|date:"M d, Y H:i" }}</time>
+              <div class="news-card__actions nav-inline">
+                {% if request.user|allow_for:"cms.news.polls.edit" %}
+                  <a class="btn btn-xs" href="{% url 'news:poll_edit' poll.pk %}">{% trans "Edit" %}</a>
+                {% endif %}
+                {% if request.user|allow_for:"cms.news.polls.delete" %}
+                  {% trans "Delete this poll?" as delete_poll_confirm %}
+                  <form method="post"
+                        action="{% url 'news:poll_delete' poll.pk %}"
+                        onsubmit="return confirm('{{ delete_poll_confirm|escapejs }}');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-outline-danger">{% trans "Delete" %}</button>
+                  </form>
+                {% endif %}
+                {% if request.real_user and request.real_user.is_superuser %}
+                  {% visibility_cog_inline "cms.news.polls.edit" "Show/hide News poll edit buttons" target='.news-card__actions' %}
+                  {% visibility_cog_inline "cms.news.polls.delete" "Show/hide News poll delete buttons" target='.news-card__actions' %}
+                {% endif %}
+              </div>
+            </div>
+          </header>
+          <div class="poll-card__body">
+            <form method="post" action="{% url 'news:poll_vote' poll.pk %}">
+              {% csrf_token %}
+              <div class="poll-options">
+                {% for opt in state.options %}
+                  <label class="poll-option {% if opt.selected %}is-selected{% endif %}">
+                    <span class="poll-option__input">
+                      <input type="{% if poll.allow_multiple %}checkbox{% else %}radio{% endif %}"
+                             name="options"
+                             value="{{ opt.option.id }}"
+                             {% if opt.selected %}checked{% endif %}
+                             {% if not state.can_vote %}disabled{% endif %}>
+                    </span>
+                    <div class="poll-option__details">
+                      <div class="poll-option__label">
+                        {{ opt.option.label }}
+                        {% if state.show_results %}
+                          <span class="poll-option__percent">{{ opt.percent|floatformat:0 }}%</span>
+                        {% endif %}
+                      </div>
+                      {% if state.show_results %}
+                        <div class="poll-option__bar">
+                          <span style="width: {{ opt.percent }}%"></span>
+                        </div>
+                        <div class="poll-option__counts">
+                          <span>{{ opt.count }} {% trans "votes" %}</span>
+                          {% if opt.voters %}
+                            <small>{% trans "Votes" %}: {{ opt.voters|join:", " }}</small>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </label>
+                {% endfor %}
+              </div>
+
+              <div class="poll-card__footer">
+                {% if state.can_vote %}
+                  <button type="submit" class="btn btn-sm">{% trans "Submit vote" %}</button>
+                {% else %}
+                  <span class="muted">{% trans "Poll closed" %}</span>
+                {% endif %}
+                <div class="muted">
+                  {% if state.total %}{% blocktrans with total=state.total %}{{ total }} total votes{% endblocktrans %}{% else %}{% trans "No votes yet" %}{% endif %}
+                  {% if state.closing_label %} · {{ state.closing_label }}{% endif %}
+                  {% if poll.allow_multiple %} · {% trans "Multiple selections allowed" %}{% endif %}
+                  {% if poll.anonymous %} · {% trans "Anonymous" %}{% else %} · {% trans "Names visible" %}{% endif %}
+                </div>
+              </div>
+            </form>
+          </div>
+        </article>
+        {% endwith %}
+      {% endif %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">{% trans "Nothing has been posted yet." %}</div>
+{% endif %}
+{% endblock %}

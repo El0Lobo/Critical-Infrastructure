@@ -1,0 +1,17 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Shows — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Shows" %}</h2>
+<div class="grid">
+  {% for show in shows %}
+    <article class="card">
+      <h3 style="margin:0">{{ show.title }}</h3>
+      <p class="muted">{{ show.date|date:"M d, Y" }}{% if show.city %} · {{ show.city }}{% endif %}</p>
+      {% if show.ticket_url %}<p><a href="{{ show.ticket_url }}">{% trans "Tickets" %}</a></p>{% endif %}
+    </article>
+  {% empty %}
+    <p class="muted">{% trans "No shows announced." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

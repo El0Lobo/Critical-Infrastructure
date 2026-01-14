@@ -1,0 +1,20 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Archive — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Archive" %}</h2>
+<ul>
+  {% for month, month_posts in archive %}
+    <li>
+      <strong>{{ month|date:"F Y" }}</strong>
+      <ul>
+        {% for post in month_posts %}
+          <li><a href="{{ post.get_absolute_url }}">{{ post.title }}</a> <span class="muted">({{ post.published_at|date:"M d" }})</span></li>
+        {% endfor %}
+      </ul>
+    </li>
+  {% empty %}
+    <li class="muted">{% trans "No archive yet." %}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

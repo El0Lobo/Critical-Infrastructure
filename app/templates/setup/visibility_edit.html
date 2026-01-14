@@ -1,0 +1,18 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Edit Visibility" %}</h1>
+
+{% if form.errors %}
+  <div class="alert alert-danger">
+    Please fix the errors below.
+  </div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn btn-primary">{% trans "Save" %}</button>
+  <a class="btn btn-secondary" href="{% url 'setup:visibility_list' %}">{% trans "Back" %}</a>
+</form>
+{% endblock %}

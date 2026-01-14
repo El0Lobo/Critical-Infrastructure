@@ -1,0 +1,13 @@
+
+{% extends "public/base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+  <h1>Events</h1>
+  <ul class="events">
+    {% for e in events %}
+      <li><a href="{{ e.get_absolute_url|default:'/events/' }}">{{ e.title|default:"Untitled" }}</a></li>
+    {% empty %}
+      <li>No events yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

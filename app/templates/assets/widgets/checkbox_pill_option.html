@@ -1,0 +1,10 @@
+<li class="checkbox-pill">
+  <label>
+    <input type="checkbox"
+           name="{{ widget.name }}"
+           {% if widget.value != None %}value="{{ widget.value|stringformat:'s' }}"{% endif %}
+           {% if widget.attrs %}{% for k, v in widget.attrs.items %} {{ k }}="{{ v|escape }}"{% endfor %}{% endif %}
+           {% if widget.selected %}checked{% endif %}>
+    <span class="pill">{{ widget.label }}</span>
+  </label>
+</li>

@@ -1,0 +1,30 @@
+{% extends "public/base_public.html" %}
+{% block title %}{{ nav_label|default:page.title }} — {{ site_settings.org_name }}{% endblock %}
+
+{% block content %}
+  {% if page_rendered %}
+    {{ page_rendered|safe }}
+  {% else %}
+    <article class="card">
+      <h2 style="margin:0">{{ nav_label|default:page.title }}</h2>
+      {% firstof page.created_at page.published_at as pdate %}
+      {% if pdate %}
+        <div class="muted" style="margin:.25rem 0 1rem">{{ pdate|date:"M d, Y" }}</div>
+      {% endif %}
+      {% if page.hero_image %}
+        <figure style="margin-bottom:1.5rem;">
+          <img src="{{ page.hero_image.url }}" alt="{{ page.title }}" style="width:100%;height:auto;border-radius:12px;">
+        </figure>
+      {% endif %}
+      <div class="content">
+        {{ page.body|safe }}
+      </div>
+    </article>
+  {% endif %}
+{% endblock %}
+
+{% block after_main %}
+  {% if page_footer %}
+    {{ page_footer|safe }}
+  {% endif %}
+{% endblock %}

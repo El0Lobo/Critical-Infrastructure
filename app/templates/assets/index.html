@@ -1,0 +1,321 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% load setup_tags %}
+
+{% block content %}
+  <div id="assets-root"
+       data-base="{% url 'assets:index' %}"
+       data-api-base="{% url 'api-assets-list' %}"
+       data-collections-api-base="{% url 'api-collections-list' %}">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div>
+        <h1 class="mb-2" style="margin:0;">{% trans "Digital Assets" %}</h1>
+        <p class="tiny-legend">
+          <strong>{% trans "Public" %}</strong> visible to everyone ·
+          <strong>{% trans "Internal" %}</strong> authenticated users only ·
+          <strong>{% trans "Groups" %}</strong> only members of selected Django groups.
+        </p>
+      </div>
+
+      {# Toolbar (superuser-only cogs) #}
+      <div class="nav-inline" style="display:flex; gap:.5rem; align-items:center; position:relative;">
+        {% if request.user|allow_for:"cms.assets.add_asset" %}
+          <button class="btn btn-primary" data-open-modal="#modal-asset">{% trans "+ Add Asset" %}</button>
+          {% if request.real_user and request.real_user.is_superuser %}
+            {% visibility_cog_inline "cms.assets.add_asset" "Show/hide Add Asset button" %}
+          {% endif %}
+        {% endif %}
+        {% if request.user|allow_for:"cms.assets.add_collection" %}
+          <button class="btn btn-outline-primary" data-open-modal="#modal-collection-new">{% trans "+ New Collection" %}</button>
+          {% if request.real_user and request.real_user.is_superuser %}
+            {% visibility_cog_inline "cms.assets.add_collection" "Show/hide New Collection button" %}
+          {% endif %}
+        {% endif %}
+        {% if request.user|allow_for:"cms.assets.add_tag" %}
+          <button class="btn btn-outline-secondary" data-open-modal="#modal-tag">{% trans "+ New Tag" %}</button>
+          {% if request.real_user and request.real_user.is_superuser %}
+            {% visibility_cog_inline "cms.assets.add_tag" "Show/hide New Tag button" %}
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="get" class="mb-2 assets-filters">
+      <div class="filters-row">
+        {{ form.q }} {{ form.kind }} {{ form.visibility }} {{ form.collection }} {{ form.tags }} {{ form.source }} {{ form.referenced }}
+        <button class="btn btn-primary">{% trans "Filter" %}</button>
+        <a class="btn btn-secondary" href="{% url 'assets:index' %}">{% trans "Reset" %}</a>
+      </div>
+    </form>
+
+    <script defer src="{% static 'assets/assets.js' %}?v=15"></script>
+    <script>window.htmx||document.write('<script src="https://unpkg.com/htmx.org@1.9.12"><\\/script>')</script>
+
+    {# Nested collections tree; when filtering, only categories with hits + ancestors are included #}
+    {% if tree %}
+      <div class="collections-wrap">
+        {% for node in tree %}
+          {% include "assets/partials/_collection_tree.html" with node=node view_mode=view_mode compact=compact %}
+        {% endfor %}
+      </div>
+    {% elif 0 %}
+      <div class="alert alert-info">{% trans "No assets match your filters." %}</div>
+    {% endif %}
+
+    {# Old flat grouped rendering disabled; keep around for reference/testing #}
+    {% if 0 and grouped %}
+      <div class="collections-wrap">
+        {% for col, assets_in in grouped %}
+          <section class="collection-group"
+                   data-collection-id="{{ col.id }}"
+                   data-col-title="{{ col.title|escapejs }}"
+                   data-col-slug="{{ col.slug|escapejs }}"
+                   data-col-visibility="{{ col.visibility_mode }}"
+                   data-col-groups="{{ col.allowed_group_ids_csv }}"
+                   data-col-parent="{{ col.parent.id|default_if_none:'' }}"
+                   data-toggle-url="{% url 'assets:collection_toggle_visibility' col.id %}"
+                   data-update-url="{% url 'assets:collection_update' col.id %}"
+                   data-delete-url="{% url 'assets:collection_delete' col.id %}">
+            <header class="collection-header">
+              <div class="left">
+                <div class="title">{{ col.title }}</div>
+                <div class="meta">
+                  <span class="slug">{% trans "Slug:" %} <span class="slug">{{ col.slug }}</span></span>
+                  <span class="tags">
+                    {% for t in col.tags.all %}
+                      <span class="tag">{{ t.name }}</span>
+                    {% empty %}
+                      <span class="tag tag-empty">{% trans "no tags" %}</span>
+                    {% endfor %}
+                  </span>
+                </div>
+              </div>
+
+              {# Right controls + collection-level cog (injects into <body>) #}
+              <div class="right nav-inline" style="position:relative; display:flex; gap:.5rem; align-items:center;">
+                <span class="vis-pill vis-{{ col.visibility_mode }}">
+                  {% if col.visibility_mode == 'groups' %}
+                    Groups ({{ col.allowed_groups.count }})
+                  {% else %}
+                    {{ col.visibility_mode|title }}
+                  {% endif %}
+                </span>
+
+                {% with id_str=col.id|stringformat:"s" %}
+                {% if request.user|allow_for:"cms.assets.collection."|add:id_str|add:".actions" %}
+                  <button class="btn btn-outline-secondary btn-sm js-toggle-col-vis"
+                          title="{% trans 'Toggle Public/Internal' %}"
+                          data-url="{% url 'assets:collection_toggle_visibility' col.id %}">
+                    Toggle
+                  </button>
+
+                  <button class="btn btn-outline-secondary btn-sm js-edit-collection"
+                          data-open-modal="#modal-collection-edit">
+                    Edit
+                  </button>
+
+                  <button class="btn btn-outline-secondary btn-sm js-collection-delete"
+                          data-url="{% url 'assets:collection_delete' col.id %}">
+                    Delete
+                  </button>
+
+                  {% with id_str=col.id|stringformat:"s" %}
+                  {% with vr_key='assets.collection.'|add:id_str %}
+                    <a
+                      href="{% url 'setup:visibility_picker' %}?key={{ vr_key }}&label={{ col.title|urlencode }}%20collection"
+                      class="cfg-cog"
+                      tabindex="0"
+                      hx-get="{% url 'setup:visibility_picker' %}?key={{ vr_key }}&label={{ col.title|urlencode }}%20collection"
+                      hx-target="body"
+                      hx-swap="beforeend"
+                      hx-push-url="false"
+                      aria-label="{% trans 'Collection visibility' %}"
+                      title="{% trans 'Collection visibility' %}"
+                      style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid #444; border-radius:8px; color:#ddd;">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                        <path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Z" />
+                        <path d="M21.3 11.5 19.4 11.2a7.8 7.8 0 0 0-.7-1.7l1.1-1.6a.9.9 0 0 0-.1-1.1l-1.2-1.2a.9.9 0 0 0-1.1-.1l-1.6 1.1c-.6-.3-1.2-.5-1.8-.7l-.3-2a.9.9 0 0 0-.9-.7h-1.7a.9.9 0 0 0-.9.7l-.3 2c-.6.2-1.2.4-1.8.7L6.4 4.5a.9.9 0 0 0-1.1.1L4 5.8a.9.9 0 0 0-.1 1.1l1.1 1.6c-.3.6-.5 1.1-.7 1.7l-2 .3a.9.9 0 0 0-.7.9v1.7c0 .4.3.8.7.9l2 .3c.2.6.4 1.2.7 1.8l-1.1 1.6a.9.9 0 0 0 .1 1.1l1.3 1.2c.3.3.8.3 1.1.1l1.6-1.1c.6.3 1.1.5 1.7.7l.3 1.9c.1.4.5.7.9.7h1.7c.4 0 .8-.3.9-.7l.3-1.9c.6-.2 1.2-.4 1.8-.7l1.6 1.1c.3.2.8.2 1.1-.1l1.2-1.2c.3-.3.3-.8.1-1.1l-1.1-1.6c.3-.6.5-1.2.7-1.8l1.9-.3c.4-.1.7-.5.7-.9v-1.7Z"/>
+                      </svg>
+                    </a>
+                  {% endwith %}
+                  {% endwith %}
+                {% endif %}
+                {% endwith %}
+              </div>
+            </header>
+
+            {% with id_str=col.id|stringformat:"s" %}
+            {% if request.user|allow_for:"cms.assets.collection."|add:id_str|add:".toolbar" %}
+              <div class="col-toolbar" style="display:flex; justify-content:flex-end; gap:.5rem; padding:8px 12px; border-bottom:1px solid #1b1f26;">
+                <button
+                  class="btn btn-outline-primary btn-sm"
+                  data-open-modal="#modal-asset"
+                  data-collection="{{ col.id }}"
+                  data-collection-title="{{ col.title|escapejs }}">
+                  + Add asset here
+                </button>
+
+                <button
+                  class="btn btn-outline-primary btn-sm"
+                  data-open-modal="#modal-collection-new"
+                  data-parent="{{ col.id }}"
+                  data-parent-title="{{ col.title|escapejs }}">
+                  + Add subcategory
+                </button>
+              </div>
+            {% endif %}
+            {% endwith %}
+
+            {# Grid/List content (renders even when empty) #}
+            {% if view_mode == "list" %}
+              {% include "assets/partials/_list.html" with assets=assets_in %}
+            {% else %}
+              {% include "assets/partials/_grid.html" with assets=assets_in %}
+            {% endif %}
+          </section>
+        {% endfor %}
+      </div>
+    {% elif 0 %}
+      <div class="alert alert-info">{% trans "No assets match your filters." %}</div>
+    {% endif %}
+
+    {% if request.user|allow_for:"cms.assets.add_asset" or request.user|allow_for:"cms.assets.add_collection" or request.user|allow_for:"cms.assets.add_tag" %}
+      {# Add / Edit Asset (same modal) #}
+      <div class="modal-overlay" id="modal-asset" hidden>
+        <div class="modal-card dark" role="dialog" aria-modal="true" aria-labelledby="modal-asset-title">
+          <h2 id="modal-asset-title">{% trans "Add Asset" %}</h2>
+          <form method="post" enctype="multipart/form-data" class="modal-form labels-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_asset">
+            {{ create_form.appears_on }}
+            {% if create_form.non_field_errors %}
+              <div class="alert alert-danger">{{ create_form.non_field_errors }}</div>
+            {% endif %}
+            <div class="grid2">
+              <div class="field">{{ create_form.collection.label_tag }} {{ create_form.collection }} {{ create_form.collection.errors }}</div>
+              <div class="field">{{ create_form.visibility.label_tag }} {{ create_form.visibility }} {{ create_form.visibility.errors }}</div>
+            </div>
+            <div class="grid2">
+              <div class="field">{{ create_form.title.label_tag }} {{ create_form.title }} {{ create_form.title.errors }}</div>
+              <div class="field">{{ create_form.slug.label_tag }} {{ create_form.slug }} {{ create_form.slug.errors }}</div>
+            </div>
+            <div class="field">{{ create_form.description.label_tag }} {{ create_form.description }} {{ create_form.description.errors }}</div>
+            <div class="field">
+              <label>{% trans "Tags" %}</label>
+              {{ create_form.tags }}
+              {{ create_form.tags.errors }}
+            </div>
+            <div class="divider">{% trans "Source (choose exactly one):" %}</div>
+            <div class="field">{{ create_form.file.label_tag }} {{ create_form.file }} {{ create_form.file.errors }}</div>
+            <div class="field">{{ create_form.url.label_tag }} {{ create_form.url }} {{ create_form.url.errors }}</div>
+            <div class="field">{{ create_form.text_content.label_tag }} {{ create_form.text_content }} {{ create_form.text_content.errors }}</div>
+            <div class="actions">
+              <button type="button" class="btn btn-secondary" data-close-modal>{% trans "Cancel" %}</button>
+              <button class="btn btn-primary">{% trans "Save" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# New Collection #}
+      <div class="modal-overlay" id="modal-collection-new" hidden>
+        <div class="modal-card dark" role="dialog" aria-modal="true" aria-labelledby="modal-collection-title">
+          <h2 id="modal-collection-title">{% trans "New Collection" %}</h2>
+          <form method="post" class="modal-form labels-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_collection">
+            {% if collection_form.non_field_errors %}
+              <div class="alert alert-danger">{{ collection_form.non_field_errors }}</div>
+            {% endif %}
+            <div class="grid2">
+              <div class="field">{{ collection_form.title.label_tag }} {{ collection_form.title }} {{ collection_form.title.errors }}</div>
+              <div class="field">{{ collection_form.slug.label_tag }} {{ collection_form.slug }} {{ collection_form.slug.errors }}</div>
+            </div>
+            <div class="grid2">
+              <div class="field">{{ collection_form.parent.label_tag }} {{ collection_form.parent }} {{ collection_form.parent.errors }}</div>
+              <div class="field">{{ collection_form.visibility_mode.label_tag }} {{ collection_form.visibility_mode }} {{ collection_form.visibility_mode.errors }}</div>
+            </div>
+            {% if all_groups %}
+              <div class="field">{{ collection_form.allowed_groups.label_tag }} {{ collection_form.allowed_groups }} {{ collection_form.allowed_groups.errors }}</div>
+            {% else %}
+              <div class="hint">{% trans "No Django Groups found. Add some in" %} <a href="/admin/auth/group/" target="_blank" rel="noopener">{% trans "Admin → Groups" %}</a>.</div>
+            {% endif %}
+            <div class="field">
+              <label>{% trans "Tags" %}</label>
+              {{ collection_form.tags }}
+              {{ collection_form.tags.errors }}
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-secondary" data-close-modal>{% trans "Cancel" %}</button>
+              <button class="btn btn-primary">{% trans "Create" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# Edit Collection #}
+      <div class="modal-overlay" id="modal-collection-edit" hidden>
+        <div class="modal-card dark" role="dialog" aria-modal="true" aria-labelledby="modal-collection-edit-title">
+          <h2 id="modal-collection-edit-title">{% trans "Edit Collection" %}</h2>
+        <form class="modal-form labels-top js-collection-edit-form">
+            {% csrf_token %}
+            <div class="grid2">
+              <div class="field"><label>{% trans "Title" %}</label><input type="text" name="title"></div>
+              <div class="field"><label>{% trans "Slug" %}</label><input type="text" name="slug"></div>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label>{% trans "Parent" %}</label>
+                <select name="parent">
+                  <option value="">—</option>
+                  {% for c in all_collections %}
+                    <option value="{{ c.id }}">{{ c.title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>{% trans "Visibility" %}</label>
+                <select name="visibility_mode">
+                  <option value="public">{% trans "Public" %}</option>
+                  <option value="internal">{% trans "Internal" %}</option>
+                  <option value="groups">{% trans "Groups" %}</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>{% trans "Allowed groups" %}</label>
+              <select multiple size="6" name="allowed_groups">
+                {% for g in all_groups %}
+                  <option value="{{ g.id }}">{{ g.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-secondary" data-close-modal>{% trans "Cancel" %}</button>
+              <button class="btn btn-primary js-collection-edit-save" type="button">{% trans "Save" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# New Tag #}
+      <div class="modal-overlay" id="modal-tag" hidden>
+        <div class="modal-card dark" role="dialog" aria-modal="true" aria-labelledby="modal-tag-title">
+          <h2 id="modal-tag-title">{% trans "New Tag" %}</h2>
+          <form method="post" class="modal-form labels-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_tag">
+            {% if tag_form.non_field_errors %}
+              <div class="alert alert-danger">{{ tag_form.non_field_errors }}</div>
+            {% endif %}
+            <div class="field">{{ tag_form.name.label_tag }} {{ tag_form.name }} {{ tag_form.name.errors }}</div>
+            <div class="actions">
+              <button type="button" class="btn btn-secondary" data-close-modal>{% trans "Cancel" %}</button>
+              <button class="btn btn-primary">{% trans "Add" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

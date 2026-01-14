@@ -1,0 +1,11 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}My Account{% endblock %}
+{% block content %}
+  <h1>{% trans "My Account" %}</h1>
+  <dl class="details">
+    <dt>{% trans "Username" %}</dt><dd>{{ user.username }}</dd>
+    <dt>{% trans "Email" %}</dt><dd>{{ user.profile.email|default:user.email|default:"—" }}</dd>
+  </dl>
+  <p><a class="btn" href="/accounts/password_change/">{% trans "Change password" %}</a></p>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+
+{% block title %}Edit Holiday · {{ holiday.name }}{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Edit holiday" %}</h1>
+    <p class="sub">{{ holiday.name }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:holidays' %}">{% trans "Back to holidays" %}</a>
+  </div>
+</section>
+
+<section class="card">
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% for field in holiday_form %}
+      <div class="form-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}
+          <ul class="errors">
+            {% for error in field.errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if holiday_form.non_field_errors %}
+      <div class="form-errors">
+        <ul>
+          {% for error in holiday_form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+      <a class="btn btn-outline" href="{% url 'events:holidays' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

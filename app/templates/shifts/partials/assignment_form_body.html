@@ -1,0 +1,11 @@
+{% load i18n %}
+﻿<div class="form-field">
+  <label for="assign-shift-select">{% trans "Shift" %}</label>
+  <select id="assign-shift-select" data-assign-select></select>
+</div>
+<p class="quiet">{% trans "Pick a team member or leave blank to clear the assignment." %}</p>
+{% for field in assign_form.visible_fields %}
+  {% include "events/partials/_field.html" with field=field %}
+{% endfor %}
+<input type="hidden" name="shift_id" value="">
+{% for hidden in assign_form.hidden_fields %}{{ hidden }}{% endfor %}

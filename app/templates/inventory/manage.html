@@ -1,0 +1,100 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+
+{% block extra_head %}
+  {{ block.super }}
+{% endblock %}
+
+{% block content %}
+<div class="inventory-toolbar">
+  <div class="inventory-toolbar__actions">
+    <h1>{% trans "Inventory" %}</h1>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-primary" href="{% url 'inventory:inventory_item_new' %}">{% trans "+ New item" %}</a>
+      <a class="btn btn-outline-primary" href="{% url 'inventory:inventory_category_new' %}">{% trans "+ New category" %}</a>
+    </div>
+  </div>
+  <form method="get" class="inventory-filters" id="inventoryFilters">
+    <input class="form-control" id="inventorySearch" type="search" name="q" placeholder="{% trans 'Search items' %}" value="{{ search }}">
+    <select class="form-select" id="inventoryKind" name="kind">
+      <option value="">{% trans "All types" %}</option>
+      {% for key,label in kinds %}
+        <option value="{{ key }}" {% if kind_filter == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="form-select" id="inventoryStatus" name="status">
+      <option value="">{% trans "All statuses" %}</option>
+      <option value="needs_reorder" {% if status_filter == "needs_reorder" %}selected{% endif %}>{% trans "Needs reorder" %}</option>
+      <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>{% trans "Inactive" %}</option>
+    </select>
+    <select class="form-select" id="inventoryCategory" name="category">
+      <option value="">{% trans "All categories" %}</option>
+      {% for cat in category_choices %}
+        <option value="{{ cat.slug }}" {% if category_filter == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <a class="btn btn-outline-secondary" href="{% url 'inventory:inventory_manage' %}">{% trans "Reset" %}</a>
+  </form>
+</div>
+
+{% if alerts_form %}
+  <section class="card" style="margin-top:1rem;">
+    <div class="card__body stack">
+      <h2>{% trans "Inventory alerts" %}</h2>
+      <p class="text-muted small mb-2">{% trans "Choose which groups receive reorder emails and who sees dashboard warnings." %}</p>
+      <form method="post" class="stack">
+        {% csrf_token %}
+        <input type="hidden" name="form_name" value="inventory_alerts">
+        <div class="grid-2">
+          <div class="field">
+            {{ alerts_form.inventory_notification_groups.label_tag }} {{ alerts_form.inventory_notification_groups }}
+            {% if alerts_form.inventory_notification_groups.help_text %}
+              <p class="text-muted small mb-0">{{ alerts_form.inventory_notification_groups.help_text }}</p>
+            {% endif %}
+            {{ alerts_form.inventory_notification_groups.errors }}
+          </div>
+          <div class="field">
+            {{ alerts_form.inventory_dashboard_groups.label_tag }} {{ alerts_form.inventory_dashboard_groups }}
+            {% if alerts_form.inventory_dashboard_groups.help_text %}
+              <p class="text-muted small mb-0">{{ alerts_form.inventory_dashboard_groups.help_text }}</p>
+            {% endif %}
+            {{ alerts_form.inventory_dashboard_groups.errors }}
+          </div>
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary">{% trans "Save alert settings" %}</button>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endif %}
+
+{% if top_categories %}
+  {% for cat in top_categories %}
+    {% include "inventory/_category_tree.html" with node=cat currency=currency category_items=category_items %}
+  {% endfor %}
+{% endif %}
+
+{% if uncategorized %}
+  <div class="inventory-card">
+    <div class="card-header">
+      <strong>{% trans "Uncategorized" %}</strong>
+    </div>
+    <div class="card-body inventory-list">
+      {% for item in uncategorized %}
+        {% include "inventory/_item_row.html" with item=item currency=currency %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{% if not top_categories and not uncategorized %}
+  <div class="alert alert-info">{% trans "No inventory records yet. Start by adding a category or item." %}</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  {% load static %}
+  <script src="{% static 'inventory/manage.js' %}" defer></script>
+{% endblock %}

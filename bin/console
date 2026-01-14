@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""
+Django Shell Launcher
+Platform-agnostic Django shell for Windows, Linux, and macOS
+"""
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import Colors, check_virtualenv, get_project_root, get_venv_python, print_error
+
+
+def run_shell():
+    """Run Django shell (preferably shell_plus if available, else default shell)"""
+    # Get paths
+    project_root = get_project_root()
+    venv_python = get_venv_python()
+    manage_py = project_root / 'manage.py'
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    # Try shell_plus first (from django-extensions), fall back to regular shell
+    # Check if django-extensions is installed
+    check_cmd = [str(venv_python), '-c', 'import django_extensions']
+    has_extensions = subprocess.run(check_cmd, capture_output=True).returncode == 0
+
+    if has_extensions:
+        shell_command = 'shell_plus'
+        shell_type = "Django Shell Plus"
+    else:
+        shell_command = 'shell'
+        shell_type = "Django Shell"
+
+    # Build command
+    cmd = [str(venv_python), str(manage_py), shell_command]
+
+    # Print startup message
+    print(f"\n{Colors.BOLD}{Colors.GREEN}{'=' * 60}{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.GREEN}  {shell_type}{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.GREEN}{'=' * 60}{Colors.END}\n")
+
+    if has_extensions:
+        print(f"{Colors.CYAN}Using shell_plus with auto-imported models{Colors.END}\n")
+    else:
+        print(f"{Colors.CYAN}Standard Django shell{Colors.END}")
+        print(f"{Colors.YELLOW}Tip: Install django-extensions for enhanced shell_plus{Colors.END}\n")
+
+    # Run the shell
+    try:
+        subprocess.run(cmd, check=True)
+    except KeyboardInterrupt:
+        print(f"\n{Colors.YELLOW}Shell exited{Colors.END}")
+        sys.exit(0)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        print_error(f"Python executable not found: {venv_python}")
+        sys.exit(1)
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Perform checks
+        check_virtualenv()
+
+        # Run the shell
+        run_shell()
+
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

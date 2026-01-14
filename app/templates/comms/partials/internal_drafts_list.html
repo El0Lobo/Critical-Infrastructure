@@ -1,0 +1,16 @@
+{% load i18n %}
+{% for d in drafts %}
+  <li>
+    <span>{{ d.subject|default:"(no subject)" }}</span>
+    <button class="btn btn-sm"
+            data-edit-internal-draft
+            data-draft-id="{{ d.id }}"
+            data-draft-subject="{{ d.subject|escapejs }}"
+            data-draft-body="{{ d.body_text|escapejs }}"
+            {% if d.thread_id %}data-draft-thread="{{ d.thread_id }}"{% endif %}
+            >{% trans "Edit" %}</button>
+  </li>
+{% empty %}
+  <p>{% trans "No drafts" %}</p>
+{% endfor %}
+

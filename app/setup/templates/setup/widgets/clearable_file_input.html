@@ -1,0 +1,42 @@
+{% load i18n %}
+<div class="clearable-file-widget">
+  {% if widget.is_initial %}
+    <div class="current-file-row">
+      <span class="current-file">
+        {{ widget.initial_text }}:
+        {% if widget.value.url %}
+          <a href="{{ widget.value.url }}">{{ widget.value }}</a>
+        {% else %}
+          {{ widget.value }}
+        {% endif %}
+      </span>
+      {% if not widget.required %}
+        <input type="checkbox"
+               name="{{ widget.clear_checkbox_name }}"
+               id="{{ widget.clear_checkbox_id }}"
+               class="clear-file-checkbox"
+               hidden>
+        <button type="button"
+                class="btn btn-xs clear-file-button"
+                data-file-clear="{{ widget.clear_checkbox_id }}"
+                {% if widget.attrs.id %}data-file-input="{{ widget.attrs.id }}"{% endif %}
+                data-label-remove="{% translate 'Remove file' %}"
+                data-label-undo="{% translate 'Undo remove' %}"
+                aria-pressed="false">
+          {% translate "Remove file" %}
+        </button>
+      {% endif %}
+    </div>
+    {% if widget.attrs.data_preview == "image" and widget.value.url %}
+      <div class="file-preview">
+        <img src="{{ widget.value.url }}" alt="{{ widget.value }}" loading="lazy">
+      </div>
+    {% endif %}
+  {% endif %}
+  <div class="upload-new-row">
+    <span class="upload-new-label">{{ widget.input_text }}:</span>
+    <span class="upload-new-input">
+      <input type="{{ widget.type }}" name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}>
+    </span>
+  </div>
+</div>

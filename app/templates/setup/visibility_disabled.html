@@ -1,0 +1,34 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Disabled Items" %}</h1>
+<p class="muted">{% trans "These navigation/items were disabled. Re-enable them to make them available again." %}</p>
+
+{% if rules %}
+  <table class="table" style="margin-top:1rem;">
+    <tr>
+      <th>{% trans "Key" %}</th>
+      <th>{% trans "Label" %}</th>
+      <th>{% trans "Notes" %}</th>
+      <th>{% trans "Actions" %}</th>
+    </tr>
+    {% for rule in rules %}
+      <tr>
+        <td><code>{{ rule.key }}</code></td>
+        <td>{{ rule.label|default:"—" }}</td>
+        <td>{{ rule.notes|default:"—" }}</td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="rule_id" value="{{ rule.id }}">
+            <button type="submit" class="btn btn-primary btn-sm">{% trans "Re-enable" %}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p><em>{% trans "No disabled items." %}</em></p>
+{% endif %}
+
+{% endblock %}

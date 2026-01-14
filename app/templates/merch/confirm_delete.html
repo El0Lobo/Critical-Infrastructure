@@ -1,0 +1,15 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Confirm delete" %}</h1>
+<form method="post">
+  {% csrf_token %}
+  {% if product %}
+    <p>Delete product “{{ product.name }}”?</p>
+  {% elif category %}
+    <p>Delete category “{{ category.name }}”?</p>
+  {% endif %}
+  <button class="btn btn-danger">{% trans "Yes, delete" %}</button>
+  <a class="btn btn-secondary" href="{% url 'merch:manage' %}">{% trans "Cancel" %}</a>
+</form>
+{% endblock %}

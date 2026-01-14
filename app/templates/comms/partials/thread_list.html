@@ -1,0 +1,80 @@
+{% load i18n %}
+﻿{# templates/comms/partials/thread_list.html #}
+<ul class="thread-list">
+  {% for thread in threads %}
+    <li class="thread-item {% if not thread.is_read_local %}unread{% endif %}"
+        data-thread-id="{{ thread.id }}"
+        data-is-read="{{ thread.is_read_local|yesno:'1,0' }}">
+      <div class="thread-main">
+        {% if not thread.is_read_local %}
+          <span class="unread-pad"></span>
+        {% endif %}
+
+        <span class="contact">
+          {% with first=1 %}
+            {% for a in thread.audiences.all %}
+              {% if a.user and a.user != request.user %}
+                {% if not first %}, {% endif %}{{ a.user.username }}{% with first=0 %}{% endwith %}
+              {% endif %}
+            {% endfor %}
+          {% endwith %}
+          {% if not thread.audiences.all|length or thread.audiences.all|length == 1 and thread.audiences.all.0.user == request.user %}
+            (no recipient)
+          {% endif %}
+        </span>
+
+        <span class="sep">-</span>
+
+        {% with last=thread.messages.last %}
+          <a class="thread-subject"
+             data-thread-id="{{ thread.id }}"
+             href="{% url 'comms:thread_detail' thread.id %}">
+            {% if last %}
+              {{ last.body_text|default_if_none:""|striptags }}
+            {% else %}
+              (no messages yet)
+            {% endif %}
+          </a>
+        {% endwith %}
+
+        <div class="thread-meta tiny-legend text-muted">
+          <span class="when">
+            {% with dt=thread.updated_at|default:thread.created_at %}
+              {{ dt|date:"d. M. Y H:i" }}
+            {% endwith %}
+          </span>
+
+
+          {# Recipients: who read my last outgoing? #}
+          {% if thread.last_out_read_by_names and thread.last_out_read_by_names|length > 0 %}
+            {% with names=thread.last_out_read_by_names %}
+              {% if names|length <= 3 %}
+                <span class="read-ind">Read by {{ names|join:", " }}</span>
+              {% else %}
+                <span class="read-ind">
+                  Read by {{ names|slice:":2"|join:", " }} (+{{ names|length|add:"-2" }})
+                </span>
+              {% endif %}
+            {% endwith %}
+          {% else %}
+            <span class="read-ind">{% trans "Sent" %}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="thread-actions">
+        {% if unarchive %}
+          <form method="post" action="{% url 'comms:thread_unarchive' thread.id %}">{% csrf_token %}
+            <button class="btn btn-sm" title="{% trans 'Unarchive' %}">{% trans "Unarchive" %}</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'comms:thread_archive' thread.id %}">{% csrf_token %}
+            <button class="btn btn-sm" title="{% trans 'Archive' %}">{% trans "Archive" %}</button>
+          </form>
+        {% endif %}
+      </div>
+    </li>
+  {% empty %}
+    <li class="thread-item"><div class="thread-main"><span class="contact">{% trans "(none)" %}</span></div></li>
+  {% endfor %}
+</ul>

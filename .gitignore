@@ -1,0 +1,67 @@
+# Based on https://github.com/github/gitignore/blob/main/Python.gitignore
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.envrc
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+terminal.log
+local_settings.py
+db.sqlite3
+db.sqlite3.bak
+db.sqlite3-journal
+
+# Collected/static & uploaded media (adjust names to your settings)
+staticfiles/*
+!staticfiles/.gitkeep
+static_root/
+
+
+# Test / coverage artifacts
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.pytest_cache/
+
+# Type checking / lint caches
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# IDE stuff
+.vscode/settings.json
+
+# local notes and scratch files
+scratch/
+scripts/
+.timetracker
+teststuff/1.html
+teststuff/folder_tree.txt
+teststuff/setup.ps
+teststuff/tree.bat
+teststuff/Untitled-1.svg
+teststuff/Untitled-2.svg
+teststuff/Untitled-3.svg
+.timetracker
+
+/teststuff

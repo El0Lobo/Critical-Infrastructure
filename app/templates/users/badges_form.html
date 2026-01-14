@@ -1,0 +1,20 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h1 style="margin:0;">{{ title|default:"Badge" }}</h1>
+    <a href="{% url 'users:badges_list' %}" class="btn btn-light">{% trans "Back" %}</a>
+  </div>
+
+  <form method="post" style="margin-top:12px;max-width:560px;">
+    {% csrf_token %}
+    <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+      <div class="mb-2">{{ form.name.label_tag }} {{ form.name }}</div>
+      <div class="mb-2">{{ form.emoji.label_tag }} {{ form.emoji }}</div>
+      <div class="mb-2">{{ form.description.label_tag }} {{ form.description }}</div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:.5rem;justify-content:flex-end;">
+      <button class="btn btn-primary" type="submit">{% trans "Save" %}</button>
+    </div>
+  </form>
+{% endblock %}

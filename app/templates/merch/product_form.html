@@ -1,0 +1,328 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<style>
+  /* Variant table niceties + delete hover red */
+  .btn-variant-delete { background-color: #dc35467b; color: #fff; }
+  .btn-variant-delete:hover, .btn-variant-delete:focus {
+    background-color: #bb2d3b; border-color: #b02a37; color: #fff;
+  }
+
+  .variant-kind { min-width: 180px; }
+  .variant-size { min-width: 120px; }
+  .variant-dim { min-width: 110px; }
+  .variant-color { min-width: 140px; }
+  .variant-sku { min-width: 140px; }
+  .variant-price { min-width: 120px; }
+  .variant-stock { min-width: 110px; }
+
+  /* Keep action buttons compact in rows/forms */
+  .inline-form { display: inline-block; margin: 0; }
+</style>
+
+<h1 class="mb-3">
+  {% if product and product.pk %}Edit Product{% else %}New Product{% endif %}
+</h1>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-md-8">
+      {{ form.name.label_tag }} {{ form.name }} {{ form.name.errors }}
+    </div>
+    <div class="col-md-4 d-flex align-items-end gap-2">
+      <div class="flex-grow-1">
+        {{ form.category.label_tag }} {{ form.category }} {{ form.category.errors }}
+      </div>
+      <a class="btn btn-outline-primary" href="{% url 'merch:category_new' %}{% if form.category.value %}?parent={{ form.category.value }}{% endif %}">
+        + New category
+      </a>
+    </div>
+
+    <div class="col-12">
+      {{ form.description.label_tag }} {{ form.description }} {{ form.description.errors }}
+    </div>
+
+    <div class="col-md-3 d-flex align-items-center">
+      <div class="form-check form-switch">
+        {{ form.visible_public }} {{ form.visible_public.label_tag }}
+      </div>
+      {{ form.visible_public.errors }}
+    </div>
+
+    <div class="col-md-3 d-flex align-items-center">
+      <div class="form-check form-switch">
+        {{ form.featured }} {{ form.featured.label_tag }}
+      </div>
+      {{ form.featured.errors }}
+    </div>
+
+    <div class="col-md-3">
+      {{ form.base_price.label_tag }} {{ form.base_price }} {{ form.base_price.errors }}
+      <div class="form-text">{% trans "If omitted, the price will show as “from &lt;min variant&gt;”." %}</div>
+    </div>
+  </div>
+
+  <hr class="my-4">
+
+  {# ---------------- Images ---------------- #}
+  <h4 class="mb-2">{% trans "Images" %}</h4>
+  {{ img_formset.management_form }}
+  {% if img_formset.non_form_errors %}
+    <div class="alert alert-danger">{{ img_formset.non_form_errors }}</div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th style="width: 40%;">{% trans "Image" %}</th>
+          <th>{% trans "Alt text" %}</th>
+          <th>{% trans "Primary" %}</th>
+          <th>{% trans "Order" %}</th>
+          <th class="text-center">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="images-body">
+        {% for f in img_formset %}
+          <tr class="image-row">
+            {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+            <td>{{ f.image }} {{ f.image.errors }}</td>
+            <td>{{ f.alt_text }} {{ f.alt_text.errors }}</td>
+            <td class="text-center">{{ f.is_primary }} {{ f.is_primary.errors }}</td>
+            <td style="max-width: 120px;">{{ f.order }} {{ f.order.errors }}</td>
+            <td class="text-center">
+              <span class="d-none delete-input">{{ f.DELETE }}</span>
+              <button type="button" class="btn btn-sm btn-variant-delete" onclick="deleteRow(this)">{% trans "Delete" %}</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-outline-secondary" id="add-image">{% trans "+ Add image" %}</button>
+  </div>
+
+  <template id="image-row-template">
+    <tr class="image-row">
+      {% for h in img_formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      <td>{{ img_formset.empty_form.image }}</td>
+      <td>{{ img_formset.empty_form.alt_text }}</td>
+      <td class="text-center">{{ img_formset.empty_form.is_primary }}</td>
+      <td>{{ img_formset.empty_form.order }}</td>
+      <td class="text-center">
+        <span class="d-none delete-input">{{ img_formset.empty_form.DELETE }}</span>
+        <button type="button" class="btn btn-sm btn-variant-delete" onclick="deleteRow(this)">{% trans "Delete" %}</button>
+      </td>
+    </tr>
+  </template>
+
+  <hr class="my-4">
+
+  {# ---------------- Variants ---------------- #}
+  <h4 class="mb-2">{% trans "Variants" %}</h4>
+  <div class="mb-2 text-muted small">
+    Choose <strong>{% trans "Kind" %}</strong>: <em>{% trans "Size" %}</em> {% trans "or" %} <em>{% trans "Length × Width" %}</em>. Only the relevant fields are required and saved.
+  </div>
+
+  {{ var_formset.management_form }}
+  {% if var_formset.non_form_errors %}
+    <div class="alert alert-danger">{{ var_formset.non_form_errors }}</div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th class="variant-kind">{% trans "Kind" %}</th>
+          <th class="variant-size">{% trans "Size" %}</th>
+          <th class="variant-dim">{% trans "Length (cm)" %}</th>
+          <th class="variant-dim">{% trans "Width (cm)" %}</th>
+          <th class="variant-color">{% trans "Color" %}</th>
+          <th class="variant-sku">{% trans "SKU" %}</th>
+          <th class="variant-price">{% trans "Price" %}</th>
+          <th class="variant-stock">{% trans "Stock" %}</th>
+          <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="variants-body">
+        {% for f in var_formset %}
+          <tr class="variant-row">
+            {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+            <td>{{ f.variant_mode }} {{ f.variant_mode.errors }}</td>
+            <td>{{ f.size_label }} {{ f.size_label.errors }}</td>
+            <td>{{ f.length_cm }} {{ f.length_cm.errors }}</td>
+            <td>{{ f.width_cm }} {{ f.width_cm.errors }}</td>
+            <td>
+              {# keep color as free text; could swap to a select/datalist if you like #}
+              {{ f.color }} {{ f.color.errors }}
+            </td>
+            <td>{{ f.sku }} {{ f.sku.errors }}</td>
+            <td>{{ f.price }} {{ f.price.errors }}</td>
+            <td>{{ f.stock }} {{ f.stock.errors }}</td>
+            <td class="text-center">
+              <span class="d-none delete-input">{{ f.DELETE }}</span>
+              <button type="button" class="btn btn-sm btn-variant-delete" onclick="deleteVariant(this)">{% trans "Delete" %}</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="button" class="btn btn-outline-secondary" id="add-variant">{% trans "+ Add variant" %}</button>
+  </div>
+
+  <template id="variant-row-template">
+    <tr class="variant-row">
+      {% for h in var_formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      <td>{{ var_formset.empty_form.variant_mode }}</td>
+      <td>{{ var_formset.empty_form.size_label }}</td>
+      <td>{{ var_formset.empty_form.length_cm }}</td>
+      <td>{{ var_formset.empty_form.width_cm }}</td>
+      <td>{{ var_formset.empty_form.color }}</td>
+      <td>{{ var_formset.empty_form.sku }}</td>
+      <td>{{ var_formset.empty_form.price }}</td>
+      <td>{{ var_formset.empty_form.stock }}</td>
+      <td class="text-center">
+        <span class="d-none delete-input">{{ var_formset.empty_form.DELETE }}</span>
+        <button type="button" class="btn btn-sm btn-variant-delete" onclick="deleteVariant(this)">{% trans "Delete" %}</button>
+      </td>
+    </tr>
+  </template>
+
+  <hr class="my-4">
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary">{% trans "Save" %}</button>
+    <a class="btn btn-secondary" href="{% url 'merch:manage' %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+
+<script>
+(function(){
+  // ---------- Utilities ----------
+  function renumberPlaceholders(root, idx){
+    // Replace __prefix__ in name/id/for so Django accepts the new form
+    root.querySelectorAll("input,select,textarea,label").forEach(el => {
+      if (el.name) el.name = el.name.replace(/__prefix__/g, idx);
+      if (el.id) el.id = el.id.replace(/__prefix__/g, idx);
+      if (el.htmlFor) el.htmlFor = el.htmlFor.replace(/__prefix__/g, idx);
+    });
+  }
+
+  function setDelete(row){
+    const del = row.querySelector("input[name$='-DELETE']");
+    if (del){
+      if (del.type === "checkbox") del.checked = true;
+      else del.value = "on";
+    }
+    row.style.display = "none";
+  }
+
+  window.deleteVariant = (btn) => {
+    const row = btn.closest("tr");
+    if (row) setDelete(row);
+  };
+
+  window.deleteRow = (btn) => {
+    const row = btn.closest("tr");
+    if (row) setDelete(row);
+  };
+
+  // ---------- Images formset ----------
+  const imgPrefix = "{{ img_formset.prefix }}";
+  const imgTotal = document.getElementById("id_" + imgPrefix + "-TOTAL_FORMS");
+  const imgBody  = document.getElementById("images-body");
+  const imgTmpl  = document.getElementById("image-row-template");
+
+  document.getElementById("add-image")?.addEventListener("click", function(){
+    const idx = parseInt(imgTotal.value, 10);
+    const shim = document.createElement("tbody");
+    shim.innerHTML = imgTmpl.innerHTML.trim();
+    const row = shim.firstElementChild;
+    renumberPlaceholders(row, idx);
+    // clear any values
+    row.querySelectorAll("input,select,textarea").forEach(el => {
+      if (el.type === "checkbox" || el.type === "radio") el.checked = false;
+      else el.value = "";
+    });
+    imgBody.appendChild(row);
+    imgTotal.value = idx + 1;
+  });
+
+  // ---------- Variants formset ----------
+  const varPrefix = "{{ var_formset.prefix }}";
+  const varTotal  = document.getElementById("id_" + varPrefix + "-TOTAL_FORMS");
+  const varBody   = document.getElementById("variants-body");
+  const varTmpl   = document.getElementById("variant-row-template");
+
+  function applyVariantMode(row){
+    const modeSel = row.querySelector("select[name^='" + varPrefix + "-'][name$='-variant_mode']");
+    const sizeBox = row.querySelector("select[name^='" + varPrefix + "-'][name$='-size_label']")?.closest("td");
+    const lenBox  = row.querySelector("select[name^='" + varPrefix + "-'][name$='-length_cm']")?.closest("td");
+    const widBox  = row.querySelector("select[name^='" + varPrefix + "-'][name$='-width_cm']")?.closest("td");
+
+    if (!modeSel || !sizeBox || !lenBox || !widBox) return;
+
+    const mode = modeSel.value || "none";
+    if (mode === "size") {
+      sizeBox.style.visibility = "";
+      sizeBox.style.pointerEvents = "";
+      lenBox.style.visibility = "hidden";
+      lenBox.style.pointerEvents = "none";
+      widBox.style.visibility = "hidden";
+      widBox.style.pointerEvents = "none";
+    } else if (mode === "dimensions") {
+      sizeBox.style.visibility = "hidden";
+      sizeBox.style.pointerEvents = "none";
+      lenBox.style.visibility = "";
+      lenBox.style.pointerEvents = "";
+      widBox.style.visibility = "";
+      widBox.style.pointerEvents = "";
+    } else {
+      sizeBox.style.visibility = "hidden";
+      sizeBox.style.pointerEvents = "none";
+      lenBox.style.visibility = "hidden";
+      lenBox.style.pointerEvents = "none";
+      widBox.style.visibility = "hidden";
+      widBox.style.pointerEvents = "none";
+    }
+  }
+
+  // Bind on existing rows
+  varBody.querySelectorAll("tr.variant-row").forEach(row => {
+    const sel = row.querySelector("select[name^='" + varPrefix + "-'][name$='-variant_mode']");
+    if (sel){
+      sel.addEventListener("change", () => applyVariantMode(row));
+      applyVariantMode(row);
+    }
+  });
+
+  // Add new variant
+  document.getElementById("add-variant")?.addEventListener("click", function(){
+    const idx = parseInt(varTotal.value, 10);
+    const shim = document.createElement("tbody");
+    shim.innerHTML = varTmpl.innerHTML.trim();
+    const row = shim.firstElementChild;
+    renumberPlaceholders(row, idx);
+    // clear any values
+    row.querySelectorAll("input,select,textarea").forEach(el => {
+      if (el.type === "checkbox" || el.type === "radio") el.checked = false;
+      else el.value = "";
+    });
+    varBody.appendChild(row);
+    varTotal.value = idx + 1;
+
+    const sel = row.querySelector("select[name^='" + varPrefix + "-'][name$='-variant_mode']");
+    if (sel){
+      sel.addEventListener("change", () => applyVariantMode(row));
+      applyVariantMode(row);
+    }
+  });
+})();
+</script>
+{% endblock %}

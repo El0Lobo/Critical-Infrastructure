@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""
+Django Development Server Launcher
+Platform-agnostic dev server for Windows, Linux, and macOS
+"""
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    check_virtualenv,
+    console,
+    get_project_root,
+    get_venv_python,
+    print_error,
+    print_info,
+    print_warning,
+    show_banner,
+    show_demoscene_intro,
+)
+
+
+def check_django_installed():
+    """Check if Django is installed in the virtual environment"""
+    venv_python = get_venv_python()
+
+    try:
+        result = subprocess.run(
+            [str(venv_python), "-c", "import django"], capture_output=True, timeout=5
+        )
+        if result.returncode != 0:
+            print_error("Django not installed in virtual environment!")
+            print_info("Please run setup first:")
+
+            if platform.system() == "Windows":
+                console.print(f"  [bold]python bin\\setup[/bold]")
+            else:
+                console.print(f"  [bold]./bin/setup[/bold]")
+
+            sys.exit(1)
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        print_error(f"Failed to check Django installation: {e}")
+        sys.exit(1)
+
+
+def run_dev_server():
+    """Run the Django development server"""
+    # Get paths
+    project_root = get_project_root()
+    venv_python = get_venv_python()
+    manage_py = project_root / "manage.py"
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    # Parse command line arguments for host and port
+    args = sys.argv[1:] if len(sys.argv) > 1 else []
+
+    # Build command
+    cmd = [str(venv_python), str(manage_py), "runserver"] + args
+
+    # Show demoscene intro
+    show_demoscene_intro()
+
+    # Print startup message
+    show_banner("Starting Development Server", style="cyan")
+
+    if not args:
+        console.print("\n[cyan]→ Server running at:[/cyan]")
+        console.print(f"  [bold magenta]http://127.0.0.1:8000/[/bold magenta]\n")
+        console.print(f"[dim]  Login: [bold]admin[/bold] / [bold]admin123[/bold][/dim]\n")
+    else:
+        console.print(f"\n[cyan]→ Custom server args:[/cyan] [bold]{' '.join(args)}[/bold]\n")
+
+    console.print(f"[yellow]  Press [bold]Ctrl+C[/bold] to stop[/yellow]\n")
+    console.rule(style="cyan")
+    console.print()
+
+    # Run the server
+    try:
+        subprocess.run(cmd, check=True)
+    except KeyboardInterrupt:
+        console.print(f"\n\n[yellow]Server stopped[/yellow]")
+        console.print(f"[dim]See you next time.[/dim]\n")
+        sys.exit(0)
+    except subprocess.CalledProcessError as e:
+        print_error(f"\nServer exited with error code {e.returncode}")
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        print_error(f"Python executable not found: {venv_python}")
+        sys.exit(1)
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Perform checks
+        check_virtualenv()
+        check_django_installed()
+
+        # Run the development server
+        run_dev_server()
+
+    except KeyboardInterrupt:
+        console.print(f"\n[yellow]Server stopped[/yellow]")
+        sys.exit(0)
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

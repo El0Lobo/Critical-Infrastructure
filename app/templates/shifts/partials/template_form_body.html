@@ -1,0 +1,5 @@
+{% include "events/partials/_form_errors.html" with form=template_form %}
+{% for hidden in template_form.hidden_fields %}{{ hidden }}{% endfor %}
+{% for field in template_form.visible_fields %}
+  {% include "events/partials/_field.html" with field=field %}
+{% endfor %}

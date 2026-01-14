@@ -1,0 +1,115 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+
+{% block title %}Event Preview &middot; {{ event.title }}{% endblock %}
+
+{% block extra_head %}{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{{ event.title }}</h1>
+    <p class="sub">{% trans "Preview of structured event data." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:edit' event.slug %}">{% trans "Edit" %}</a>
+    <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Back to list" %}</a>
+  </div>
+</section>
+
+<article class="event-preview">
+  {% if event.hero_image %}
+    <img class="hero" src="{{ event.hero_image.url }}" alt="Poster for {{ event.title }}">
+  {% endif %}
+  <dl class="kv">
+    <dt>{% trans "Type" %}</dt><dd>{{ event.get_event_type_display }}</dd>
+    <dt>{% trans "Status" %}</dt><dd>{{ event.get_status_display }}</dd>
+    <dt>{% trans "Recurrence" %}</dt>
+    <dd>
+      {% if event.is_recurring %}
+        {{ event.recurrence_description }}
+        {% if event.recurrence_next_start_at %}
+          <div class="quiet">Next: {{ event.recurrence_next_start_at|date:"Y-m-d H:i" }}</div>
+        {% endif %}
+      {% elif event.recurrence_next_start_at %}
+        Next scheduled: {{ event.recurrence_next_start_at|date:"Y-m-d H:i" }}
+      {% else %}
+        Does not repeat
+      {% endif %}
+    </dd>
+    <dt>{% trans "Starts" %}</dt>
+    <dd>
+      {% if event.starts_at %}
+        {{ event.starts_at|date:"Y-m-d H:i" }}
+      {% elif event.recurrence_next_start_at %}
+        {{ event.recurrence_next_start_at|date:"Y-m-d H:i" }}
+      {% else %}
+        &mdash;
+      {% endif %}
+    </dd>
+    <dt>{% trans "Upcoming" %}</dt>
+    <dd>
+      {% if occurrences %}
+        <ul class="mini-list">
+          {% for occ in occurrences|slice:":6" %}
+            <li>{{ occ.start|date:"Y-m-d H:i" }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <span class="quiet">{% trans "No scheduled dates" %}</span>
+      {% endif %}
+    </dd>
+    <dt>{% trans "Doors" %}</dt><dd>{% if event.doors_at %}{{ event.doors_at|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}</dd>
+    <dt>{% trans "Ends" %}</dt><dd>{% if event.ends_at %}{{ event.ends_at|date:"Y-m-d H:i" }}{% else %}&mdash;{% endif %}</dd>
+    <dt>{% trans "Location" %}</dt>
+    <dd>
+      {% if event.venue_name %}<strong>{{ event.venue_name }}</strong>{% endif %}
+      {% if event.venue_address %}
+        <div>{{ event.venue_address }}{% if event.venue_postal_code %}, {{ event.venue_postal_code }}{% endif %}{% if event.venue_city %} {{ event.venue_city }}{% endif %}</div>
+      {% endif %}
+      {% if event.venue_country %}<div>{{ event.venue_country }}</div>{% endif %}
+    </dd>
+    <dt>{% trans "Ticketing" %}</dt>
+    <dd>
+      {% if event.is_free %}
+        Free entry
+      {% else %}
+        {% if event.ticket_price_from %}
+          {{ event.ticket_price_from }}{% if event.ticket_price_to %}-{{ event.ticket_price_to }}{% endif %}
+        {% else %}
+          &mdash;
+        {% endif %}
+      {% endif %}
+      {% if event.ticket_url %}<div><a href="{{ event.ticket_url }}" target="_blank" rel="noopener">{% trans "Ticket link" %}</a></div>{% endif %}
+    </dd>
+    <dt>{% trans "Categories" %}</dt>
+    <dd>
+      {% for cat in event.categories.all %}
+        <span class="pill">{{ cat.name }}</span>
+      {% empty %}
+        <span class="quiet">{% trans "None" %}</span>
+      {% endfor %}
+    </dd>
+  </dl>
+  <section>
+    <h2>{% trans "Public description" %}</h2>
+    <div class="prose">{{ event.description_public|linebreaks }}</div>
+  </section>
+  <section>
+    <h2>{% trans "Performers" %}</h2>
+    <ul class="performer-list">
+      {% for slot in event.performers.all %}
+        <li>
+          <strong>{{ slot.display_name }}</strong>
+          {% if slot.slot_starts_at %}
+            <span> &middot; {{ slot.slot_starts_at|date:"H:i" }}{% if slot.slot_ends_at %}-{{ slot.slot_ends_at|date:"H:i" }}{% endif %}</span>
+          {% endif %}
+          {% if slot.performer_type %}<span class="quiet">({{ slot.performer_type }})</span>{% endif %}
+        </li>
+      {% empty %}
+        <li class="quiet">{% trans "No performers listed." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+</article>
+{% endblock %}

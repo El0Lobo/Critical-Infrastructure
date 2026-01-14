@@ -1,0 +1,16 @@
+{% load static i18n %}
+<!doctype html><html lang="en"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% trans "Theme Test Page" %}</title>
+  <link rel="stylesheet" href="{% static 'publicthemes/themes/classic.css' %}">
+  <style>.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}.card{border:1px solid var(--border,#ddd);padding:1rem;border-radius:12px;background:var(--card,#fff);}</style>
+</head><body>
+  <main class="container" style="padding:2rem;">
+    <h1>{% trans "Theme · Demo" %}</h1>
+    <div class="grid">
+      <div class="card"><h3>{% trans "Buttons" %}</h3><p><a class="btn" href="#">{% trans "Default" %}</a></p></div>
+      <div class="card"><h3>{% trans "Card" %}</h3><p>{% trans "Lorem ipsum dolor sit amet…" %}</p></div>
+      <div class="card"><h3>{% trans "Pattern" %}</h3><div style="height:120px;background:repeating-linear-gradient(45deg,rgba(0,0,0,.03) 0 10px,transparent 10px 20px);"></div></div>
+    </div>
+  </main>
+</body></html>

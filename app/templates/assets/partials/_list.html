@@ -1,0 +1,53 @@
+{% load setup_tags i18n %}
+<table class="assets-table {% if compact %}is-compact{% endif %}">
+  <thead>
+    <tr>
+      <th>{% trans "Title" %}</th>
+      <th>{% trans "Type" %}</th>
+      <th>{% trans "Tags" %}</th>
+      <th>{% trans "Visibility" %}</th>
+      <th>{% trans "Updated" %}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in assets %}
+      {% with id_str=a.id|stringformat:"s" %}
+      {% with akey='assets.asset.'|add:id_str gkey='cms.assets.asset.'|add:id_str|add:".actions" %}
+      {% with c_id=a.collection_id|default_if_none:""|stringformat:"s" %}
+      {% with ckey='assets.collection.'|add:c_id cact='cms.assets.collection.'|add:c_id|add:".actions" ctb='cms.assets.collection.'|add:c_id|add:".toolbar" %}
+      {% if request.user.is_superuser or request.user|allow_for:akey or request.user|allow_for:gkey or request.user|allow_for:ckey or request.user|allow_for:cact or request.user|allow_for:ctb %}
+      <tr data-id="{{ a.id }}">
+        <td>
+          <div class="title" contenteditable="{% if request.user.is_superuser or request.user|allow_for:gkey %}true{% else %}false{% endif %}" data-field="title">{{ a.title }}</div>
+          <div class="slug small">{% trans "Slug:" %} <span class="slug" contenteditable="{% if request.user.is_superuser or request.user|allow_for:gkey %}true{% else %}false{% endif %}" data-field="slug">{{ a.slug }}</span></div>
+          {% if a.kind == "note" and a.text_content %}
+            <details class="note-preview"><summary>{% trans "Preview text" %}</summary><pre>{{ a.text_content|truncatechars:240 }}</pre></details>
+          {% endif %}
+        </td>
+        <td>{{ a.kind|title }}</td>
+        <td>{% for t in a.tags.all %}<span class="tag">{{ t.name }}</span>{% empty %}—{% endfor %}</td>
+        <td><span class="vis-pill vis-{{ a.effective_visibility }}">{{ a.effective_visibility|title }}</span></td>
+        <td>{{ a.updated_at|date:"Y-m-d H:i" }}</td>
+        <td class="actions">
+          {% if request.user.is_superuser or request.user|allow_for:gkey %}
+            <button class="btn btn-outline-secondary btn-sm js-toggle-vis"
+                    data-url="{% url 'api-assets-toggle-visibility' a.id %}">{% trans "Toggle" %}</button>
+          {% endif %}
+          {% if a.file %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ a.file.url }}" target="_blank">{% trans "Open" %}</a>
+          {% elif a.url %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ a.url }}" target="_blank">{% trans "Open" %}</a>
+          {% elif a.text_content %}
+            <button class="btn btn-outline-secondary btn-sm js-copy-text" data-text="{{ a.text_content|escapejs }}">{% trans "Copy Text" %}</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+      {% endwith %}
+      {% endwith %}
+      {% endwith %}
+      {% endwith %}
+    {% endfor %}
+  </tbody>
+</table>

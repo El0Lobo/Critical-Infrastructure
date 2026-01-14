@@ -1,0 +1,22 @@
+
+{% load menu_extras i18n %}
+{% with children=child_map|get_item:node.id %}
+  {% if children %}
+    <ul style="list-style:none; margin:0; padding-left:1rem; display:grid; gap:.25rem;">
+      {% for c in children %}
+        <li>
+          <div style="display:flex; gap:.5rem; align-items:center;">
+            <span>↳ <strong>{{ c.name }}</strong></span>
+            <a class="btn btn-sm btn-primary" href="{% url 'menu:category_create_child' c.slug %}">{% trans "+ Subcategory" %}</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'menu:item_create_here' c.slug %}">{% trans "+ Item here" %}</a>
+            <a class="btn btn-sm btn-secondary" href="{% url 'menu:category_edit' c.slug %}">{% trans "Rename" %}</a>
+            <form method="post" action="{% url 'menu:category_delete' c.slug %}" style="display:inline;">{% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete category {{ c.name }} and all nested items?')">{% trans "Delete" %}</button>
+            </form>
+          </div>
+          {% include 'menu/partials/_category_tree.html' with node=c child_map=child_map %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}

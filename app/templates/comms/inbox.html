@@ -1,0 +1,141 @@
+﻿{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% block content %}
+<h1>{% trans "Inbox" %}</h1>
+
+<section class="mb-4">
+  <h2>{% trans "Internal" %}</h2>
+  <p><button class="btn btn-sm btn-primary" data-open="#modalComposeInternal">{% trans "New Message" %}</button></p>
+  {% include "comms/partials/thread_list.html" with threads=internal_threads %}
+  <details class="mt-2"><summary>{% trans "Archived Internal" %}</summary>
+    {% include "comms/partials/thread_list.html" with threads=archived_internal_threads unarchive=1 %}
+  </details>
+  
+</section>
+
+<section class="mb-4">
+  <h2>{% trans "Email" %}</h2>
+  <p><button class="btn btn-sm" data-open="#modalComposeEmail">{% trans "New Email" %}</button></p>
+  {% include "comms/partials/thread_list.html" with threads=email_threads %}
+  <details class="mt-2"><summary>{% trans "Archived Email" %}</summary>
+    {% include "comms/partials/thread_list.html" with threads=archived_email_threads unarchive=1 %}
+  </details>
+
+  <details class="mt-2"><summary>{% trans "Email Drafts" %}</summary>
+    {% include "comms/partials/email_drafts_list.html" %}
+  </details>
+</section>
+
+<div id="modalComposeEmail" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <h3>{% trans "New Email" %}</h3>
+    <form method="post" action="{% url 'comms:compose_email_modal' %}">{% csrf_token %}
+      <div class="row"><label>{% trans "Subject" %}</label><input name="subject" placeholder="{% trans 'Subject' %}"></div>
+      <div class="row"><label>{% trans "Body" %}</label><textarea name="body" rows="8" placeholder="{% trans 'Write your email...' %}"></textarea></div>
+      <div class="actions">
+        <button class="btn" name="action" value="draft">{% trans "Save Draft" %}</button>
+        <button class="btn btn-primary" name="action" value="send">{% trans "Send Now" %}</button>
+        <button class="btn" type="button" data-close>{% trans "Cancel" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalComposeInternal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <h3 id="internalModalTitle">{% trans "New Message" %}</h3>
+
+    <form id="internalComposeForm" method="post" enctype="multipart/form-data" action="{% url 'comms:compose_internal_modal' %}">
+      {% csrf_token %}
+      <input type="hidden" name="thread_id" value="">
+
+      <!-- Selected recipients (chips) + typeahead input -->
+      <div class="row">
+        <label>{% trans "To" %}</label>
+        <div class="chips-selected" id="chipsSelected" aria-live="polite"></div>
+        <div class="chips-input-wrap">
+          <input id="recipientInput"
+                 class="chips-input"
+                 type="text"
+                 placeholder="{% trans 'Type a username or group…' %}"
+                 list="recipientslist"
+                 autocomplete="off">
+          <datalist id="recipientslist">
+            {# Users: value is u:<id> — label is username #}
+            {% for u in users_all %}
+              <option value="u:{{u.id}}">{{u.username}}</option>
+            {% endfor %}
+            {# Groups: value is g:<id> — label is group name #}
+            {% for g in groups_all %}
+              <option value="g:{{g.id}}">{{g.name}}</option>
+            {% endfor %}
+          </datalist>
+        </div>
+      </div>
+
+      <!-- Browsable pickers (still clickable pills) -->
+      <div class="row">
+        <label>{% trans "Users" %}</label>
+        <div class="chips-list" id="chipsUsers">
+          {% for u in users_all %}
+            <button type="button" class="chip" data-chip-type="user" data-id="{{u.id}}" data-label="{{u.username}}">{{u.username}}</button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="row">
+        <label>{% trans "Groups" %}</label>
+        <div class="chips-list" id="chipsGroups">
+          {% for g in groups_all %}
+            <button type="button" class="chip" data-chip-type="group" data-id="{{g.id}}" data-label="{{g.name}}">{{g.name}}</button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Hidden controls for backend -->
+      <div class="row" style="display:none">
+        <select name="to_user_ids" id="to_user_ids" multiple>
+          {% for u in users_all %}<option value="{{u.id}}">{{u.username}}</option>{% endfor %}
+        </select>
+        <select name="to_group_ids" id="to_group_ids" multiple>
+          {% for g in groups_all %}<option value="{{g.id}}">{{g.name}}</option>{% endfor %}
+        </select>
+        <input type="hidden" name="to_usernames" id="to_usernames" value="">
+      </div>
+
+      <div class="row">
+        <label>{% trans "Body" %}</label>
+        <div class="emoji-wrap">
+          <textarea name="body" rows="8" placeholder="{% trans 'Write your message...' %}"></textarea>
+          <button type="button" class="btn btn-sm" data-emoji-insert>😊</button>
+          <emoji-picker class="emoji-picker" hidden></emoji-picker>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>{% trans "Attachments" %}</label>
+        <input type="file" name="attachments" multiple>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" name="action" value="send">{% trans "Send" %}</button>
+        <button class="btn" type="button" data-close>{% trans "Cancel" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalThread" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card wide">
+    <div id="modalThreadBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script src="{% static 'comms/inbox.js' %}?v4" defer></script>
+{% endblock %}
+

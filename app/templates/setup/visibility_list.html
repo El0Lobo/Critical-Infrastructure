@@ -1,0 +1,30 @@
+{# app/templates/setup/visibility_list.html #}
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% block content %}
+<h1>{% trans "Visibility Rules" %}</h1>
+
+<form class="mb-3" style="display:flex; gap:.5rem; align-items:center;"
+      hx-get="{% url 'setup:visibility_list' %}"
+      hx-target="#rules-table"
+      hx-push-url="true">
+  <input type="text"
+         name="q"
+         value="{{ q }}"
+         placeholder="{% trans 'Search key/label/notes' %}"
+         style="flex:1; padding:.4rem .6rem;"
+         hx-trigger="keyup changed delay:300ms"
+         hx-get="{% url 'setup:visibility_list' %}"
+         hx-target="#rules-table"
+         hx-include="closest form"
+         hx-push-url="true">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="dir" value="{{ direction }}">
+  <button class="btn btn-primary" type="submit">{% trans "Search" %}</button>
+  <a class="btn btn-secondary" href="{% url 'setup:visibility_list' %}">{% trans "Reset" %}</a>
+</form>
+
+<div id="rules-table">
+  {% include "setup/_visibility_table.html" %}
+</div>
+{% endblock %}

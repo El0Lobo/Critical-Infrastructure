@@ -1,0 +1,70 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% block title %}Pages · CMS{% endblock %}
+{% block extra_head %}
+  {{ block.super }}
+{% endblock %}
+{% block content %}
+  <div class="pages-header">
+    <h1 style="margin:0;">{% trans "Pages" %}</h1>
+    <div class="pages-actions">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'pages_login_edit' %}">{% trans "Edit login page" %}</a>
+      <a class="btn btn-primary" href="{% url 'pages_create' %}">{% trans "+ New page" %}</a>
+    </div>
+  </div>
+
+  {% if pages %}
+    <div class="table-wrapper pages-table-wrapper">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>{% trans "Title" %}</th>
+            <th>{% trans "Slug" %}</th>
+            <th>{% trans "Status" %}</th>
+            <th>{% trans "Updated" %}</th>
+            <th style="width:1%;">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for page in pages %}
+            <tr>
+              <td><a href="{% url 'pages_edit' slug=page.slug %}">{{ page.title }}</a></td>
+              <td>{{ page.slug }}</td>
+              <td>
+                <form method="post" action="{% url 'pages_toggle_status' slug=page.slug %}" class="status-toggle-form" onsubmit="return confirm('Toggle publish state for this page?');">
+                  {% csrf_token %}
+                  {% if page.status == 'published' %}
+                    <button type="submit" class="status-pill is-published">
+                      <span class="label-current">{% trans "Published" %}</span>
+                      <span class="label-hover">{% trans "Draft" %}</span>
+                    </button>
+                  {% else %}
+                    <button type="submit" class="status-pill is-draft">
+                      <span class="label-current">{% trans "Draft" %}</span>
+                      <span class="label-hover">{% trans "Published" %}</span>
+                    </button>
+                  {% endif %}
+                </form>
+              </td>
+
+              <td>{{ page.updated_at|date:"M d, Y H:i" }}</td>
+              <td>
+                <div class="page-row-actions">
+                  <a class="btn btn-xs row-action-btn btn-edit" href="{% url 'pages_edit' slug=page.slug %}">{% trans "Edit" %}</a>
+                  <form method="post" action="{% url 'pages_delete' slug=page.slug %}" onsubmit="return confirm('Delete this page?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs row-action-btn btn-delete">{% trans "Delete" %}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty" style="margin-top:2rem;">
+      <p>{% trans "No pages yet. Start by creating one." %}</p>
+    </div>
+  {% endif %}
+{% endblock %}

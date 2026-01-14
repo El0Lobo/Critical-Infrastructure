@@ -1,0 +1,24 @@
+
+{% extends "public/base.html" %}
+{% block title %}{{ event.title|default:"Event" }}{% endblock %}
+{% block content %}
+  <article class="event">
+    <h1>{{ event.title|default:"Untitled event" }}</h1>
+    {% if event.start or event.end %}
+      <p class="when">
+        {% if event.start %}{{ event.start }}{% endif %}
+        {% if event.end %} – {{ event.end }}{% endif %}
+      </p>
+    {% endif %}
+    {% if event.venue_name or event.address %}
+      <p class="where">
+        {% if event.venue_name %}{{ event.venue_name }}{% endif %}
+        {% if event.address %}<br>{{ event.address }}{% endif %}
+      </p>
+    {% endif %}
+    {% if event.description %}<div class="prose">{{ event.description|linebreaks }}</div>{% endif %}
+    {% if event.latitude and event.longitude %}
+      <div id="map" data-lat="{{ event.latitude }}" data-lng="{{ event.longitude }}"></div>
+    {% endif %}
+  </article>
+{% endblock %}

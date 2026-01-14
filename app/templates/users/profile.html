@@ -1,0 +1,106 @@
+{% extends "cms/base_cms.html" %}
+{% load setup_tags i18n %}
+
+{% block content %}
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h1 style="margin:0;">{{ profile.chosen_name|default:obj.username }}</h1>
+    <div style="display:flex;gap:.5rem;">
+      <a href="{% url 'users:profile_edit' obj.id %}" class="btn btn-secondary">{% trans "Edit" %}</a>
+      <a href="{% url 'users:index' %}" class="btn btn-light">{% trans "Back" %}</a>
+    </div>
+  </div>
+
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px;">
+    {# --- Identity --- #}
+    {% if request.user|allow_for:"cms.users.identity" %}
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>{% trans "Identity" %}</strong>
+          {% visibility_cog_inline "cms.users.identity" "Show identity" %}
+        </div>
+        <div style="margin-top:.5rem;font-size:.95rem;">
+          {% if request.user|allow_for:"cms.users.identity.legal_name" %}
+            <div><span class="text-muted">{% trans "Legal name:" %}</span> {{ profile.legal_name|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.identity.legal_name" "Show legal name" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.identity.chosen_name" %}
+            <div><span class="text-muted">{% trans "Chosen name:" %}</span> {{ profile.chosen_name|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.identity.chosen_name" "Show chosen name" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.identity.pronouns" %}
+            <div><span class="text-muted">{% trans "Pronouns:" %}</span> {{ profile.pronouns|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.identity.pronouns" "Show pronouns" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.identity.age" %}
+            <div><span class="text-muted">{% trans "Age:" %}</span> {{ profile.age|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.identity.age" "Show age" %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# --- Contact --- #}
+    {% if request.user|allow_for:"cms.users.contact" %}
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>{% trans "Contact" %}</strong>
+        {% visibility_cog_inline "cms.users.contact" "Show contact" %}
+        </div>
+        <div style="margin-top:.5rem;font-size:.95rem;">
+          {% if request.user|allow_for:"cms.users.contact.email" %}
+            <div><span class="text-muted">{% trans "Email:" %}</span> {{ profile.email|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.contact.email" "Show email" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.contact.phone" %}
+            <div><span class="text-muted">{% trans "Phone:" %}</span> {{ profile.phone|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.contact.phone" "Show phone" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.contact.address" %}
+            <div><span class="text-muted">{% trans "Address:" %}</span> {{ profile.address|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.contact.address" "Show address" %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# --- Role & Duties --- #}
+    {% if request.user|allow_for:"cms.users.role" %}
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>{% trans "Role" %}</strong>
+          {% visibility_cog_inline "cms.users.role" "Show role" %}
+        </div>
+        <div style="margin-top:.5rem;font-size:.95rem;">
+          {% if request.user|allow_for:"cms.users.role.title" %}
+            <div><span class="text-muted">{% trans "Title:" %}</span> {{ profile.role_title|default:"—" }}</div>
+            {% visibility_cog_inline "cms.users.role.title" "Show role title" %}
+          {% endif %}
+          {% if request.user|allow_for:"cms.users.role.duties" %}
+            <div><span class="text-muted">{% trans "Duties:" %}</span> {{ profile.duties|default:"—"|linebreaks }}</div>
+            {% visibility_cog_inline "cms.users.role.duties" "Show duties" %}
+          {% endif %}
+          <div><span class="text-muted">{% trans "Primary group:" %}</span> {{ profile.primary_group|default:"—" }}</div>
+        </div>
+      </div>
+    {% endif %}
+
+    {# --- Badges --- #}
+    {% if request.user|allow_for:"cms.users.badges" %}
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>{% trans "Badges" %}</strong>
+          {% visibility_cog_inline "cms.users.badges" "Show badges" %}
+        </div>
+        <div style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+          {% for b in profile.badges.all %}
+            <span class="badge" style="border:1px solid #e6e6e6;padding:.15rem .45rem;border-radius:.5rem;">
+              {{ b.emoji }} {{ b.name }}
+            </span>
+          {% empty %}
+            <span class="text-muted">—</span>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

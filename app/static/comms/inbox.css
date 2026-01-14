@@ -1,0 +1,279 @@
+﻿/* ===========================
+   Base visibility helpers
+   =========================== */
+.modal[hidden]{display:none;}
+.modal{position:fixed; inset:0;}
+[hidden]{display:none !important;}
+
+/* ===========================
+   Thread list
+   =========================== */
+.thread-list{
+  list-style:none;
+  padding:0;
+  margin:.5rem 0 0 0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+}
+
+.thread-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.75rem;
+  padding:.6rem .75rem;
+  border-bottom:1px solid var(--line);
+  background:transparent;
+}
+
+.thread-item.unread{ background:#0f1419; }
+
+.thread-actions{ display:flex; gap:.5rem; }
+
+.thread-main{
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;         /* allow meta to wrap to the next row */
+  gap:.4rem;
+  min-width:0;            /* enable shrinking of children */
+}
+
+/* Unread dot: only visible for .unread items */
+.thread-item:not(.unread) .unread-pad{ display:none !important; }
+.thread-item.unread .unread-pad{
+  display:inline-block !important;
+  width:8px !important;
+  height:8px !important;
+  margin:0 .4rem 0 0 !important; /* space before names/title */
+  border-radius:50% !important;
+  background:var(--accent) !important;
+  vertical-align:middle !important;
+}
+
+/* Names / participants */
+.thread-main .contact{
+  font-weight:600;
+  color:var(--fg);
+  white-space:nowrap;
+}
+
+/* dash separator */
+.thread-main .sep{
+  opacity:.6;
+  user-select:none;
+}
+
+/* Subject/preview: single line, clamp with ellipsis */
+.thread-subject{
+  font-weight:600;
+  color:var(--fg);
+  flex:1 1 auto;
+  min-width:0;                 /* important for ellipsis in flex */
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.thread-subject:hover{ text-decoration:underline; }
+
+/* Meta always on its own line under the first row */
+.thread-meta{
+  flex:1 1 100%;
+  color:var(--muted);
+  font-size:.8em;
+  line-height:1.2;
+  opacity:.9;
+  margin-top:2px;
+  text-align:left;
+}
+.read-ind{ margin-left:.5rem; color:var(--muted); }
+
+/* Cursor affordances */
+.thread-item{ cursor:pointer; }
+.thread-actions *{ cursor:default; }
+
+/* ===========================
+   Section header (title + button inline)
+   =========================== */
+section.mb-4 > h2{
+  display:inline-block;
+  margin:0;
+  line-height:1.2;
+  vertical-align:middle;
+}
+section.mb-4 > p{
+  display:inline-block;
+  margin:0 0 0 .75rem;
+  vertical-align:middle;
+}
+section.mb-4 > p > .btn{
+  vertical-align:middle;
+  border-radius:10px;
+  border:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 6px 14px rgba(0,0,0,.25);
+  transition:transform .06s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+section.mb-4 > p > .btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 2px 0 rgba(255,255,255,.04) inset, 0 10px 20px rgba(0,0,0,.3);
+  border-color:color-mix(in srgb, var(--accent), white 12%);
+}
+section.mb-4 > p > .btn:active{
+  transform:translateY(0);
+  box-shadow:none;
+}
+section.mb-4 > .thread-list,
+section.mb-4 > details{
+  display:block;
+  margin-top:.5rem;
+}
+section.mb-4{ margin-bottom:1em; }
+
+/* ===========================
+   Chat bubbles + modal
+   =========================== */
+.thread-chat{
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+}
+.msg{ display:flex; padding:2px 0; }
+.msg.mine{ justify-content:flex-end; }
+
+.bubble{
+  background:#0f1419;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:.5rem .75rem;
+  max-width:72%;
+}
+.msg.mine .bubble{ background:#13282b; border-color:#1d3a3f; }
+.stamp{ margin-top:4px; text-align:right; }
+
+/* Modal layout */
+.modal .modal-card{ display:flex; flex-direction:column; }
+.thread-modal{ display:flex; flex-direction:column; gap:.5rem; max-height:calc(100vh - 8rem); }
+.thread-modal > header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.5rem .75rem; border-bottom:1px solid var(--line);
+  position:sticky; top:0; background:var(--panel); z-index:1;
+}
+.thread-modal .thread-chat{
+  flex:1; overflow:auto; display:flex; flex-direction:column; gap:.5rem;
+  padding:.5rem; background:#0c1216; border:1px solid var(--line); border-radius:10px;
+}
+.thread-modal .chat-reply{
+  border-top:1px solid var(--line); padding:.5rem; background:var(--panel);
+  position:sticky; bottom:0; display:flex; gap:.5rem;
+}
+.thread-modal .emoji-wrap{ position:relative; flex:1; display:flex; gap:.5rem; align-items:flex-end; }
+.thread-modal .attachments{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:6px; }
+.thread-modal .attachments img{
+  max-width:160px; max-height:120px; border:1px solid var(--line); border-radius:6px; display:block;
+}
+
+/* Emoji picker panel */
+.thread-modal .emoji-picker{
+  position:fixed; right:16px; bottom:96px;
+  width:min(420px, 96vw); height:360px;
+  background:#0f1419; border:1px solid var(--line); border-radius:8px; z-index:2000;
+}
+.emoji-picker[hidden]{ display:none !important; }
+.thread-modal .emoji-picker button{ background:none; border:0; cursor:pointer; font-size:1rem; }
+
+/* Reply bar tools + inputs */
+.thread-modal .chat-reply .tools{ display:inline-flex; align-items:flex-end; gap:.35rem; margin-left:.35rem; }
+.thread-modal .chat-reply .file{ cursor:pointer; user-select:none; }
+.thread-modal .chat-reply .file input{ display:none; }
+.thread-modal .chat-reply .btn{
+  flex:0 0 auto; height:32px; padding:0 .6rem;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.thread-modal .chat-reply textarea{
+  flex:1; min-height:32px; max-height:40vh; resize:vertical; overflow:auto;
+}
+  .thread-modal .chat-reply .file-paperclip{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border:1px solid var(--line); border-radius:8px; background:#0f1419;
+    display: none;
+  }
+/* Mobile tweaks */
+@media (max-width: 600px){
+  .thread-modal .chat-reply .file-input{ display:none; }
+  .thread-modal .chat-reply .file-paperclip{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border:1px solid var(--line); border-radius:8px; background:#0f1419;
+    display: block;
+  }
+}
+
+/* Optional: comma between multiple names in a .chat-title list */
+.chat-title .name + .name::before{ content:", "; }
+
+
+/* Jump-to-newest pill inside .thread-chat */
+.thread-chat .jump-to-new{
+  position: sticky;
+  bottom: 8px;
+  align-self: flex-end;
+  margin-right: 6px;
+  z-index: 5;
+  display: none;                 /* JS toggles to inline-flex */
+  backdrop-filter: blur(2px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(169, 180, 190, 0.9);
+}
+
+/* Chips UI */
+.chips-selected,
+.chips-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.25rem .55rem;
+  color: aliceblue;
+  border-radius:999px;
+  background:#06402f;
+  cursor:pointer;
+  user-select:none;
+}
+.chip.is-selected{ border-color: var(--accent); background:#7d8083; }
+.chip .x{
+  font-weight:700; opacity:.75;
+}
+
+/* Compose Internal: inline tools row */
+#modalComposeInternal .emoji-wrap {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+#modalComposeInternal .modal .modal-card {
+  padding: 1rem;
+}
+
+#modalComposeInternal textarea {
+  flex: 1;
+  min-height: 40px;
+  resize: vertical;
+}
+
+
+
+#modalComposeInternal input[type="file"] {
+  display: block;
+}
+
+#modalComposeInternal .file-paperclip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0f1419;
+  cursor: pointer;
+}

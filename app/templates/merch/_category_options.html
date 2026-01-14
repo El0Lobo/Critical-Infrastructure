@@ -1,0 +1,4 @@
+{# app/templates/merch/_category_options.html #}
+{% for c in categories %}
+  <option value="{{ c.pk }}">{{ c.name }}</option>
+{% endfor %}

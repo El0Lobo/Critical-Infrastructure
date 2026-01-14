@@ -1,0 +1,24 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}Settings · CMS{% endblock %}
+{% block content %}
+<h1>{% trans "Settings" %}</h1>
+<div class="toolbar">
+  <a class="btn" href="/cms/settings/create/">{% trans "+ New" %}</a>
+  <input placeholder="Search (not wired yet)" style="padding:.5rem;border-radius:8px;border:1px solid var(--line);background:#0f1419;color:#e9f1f2;width:240px">
+</div>
+{% if rows %}
+<table class="tbl">
+  <thead><tr><th>{% trans "step" %}</th><th>{% trans "status" %}</th><th>{% trans "notes" %}</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr onclick="window.location='/cms/settings/{{ r.slug }}/edit/'" style="cursor:pointer">
+      <td>{{ r.step|default:r.title }}</td><td>{{ r.status }}</td><td>{{ r.notes }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <div class="empty">{% trans "Nothing here yet. Click “New”." %}</div>
+{% endif %}
+{% endblock %}

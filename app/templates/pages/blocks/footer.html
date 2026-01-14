@@ -1,0 +1,88 @@
+{% load static i18n %}
+{% load inline_edit %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<footer class="page-block page-block--footer" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    <div class="page-footer">
+      <div class="page-footer__grid">
+        <div class="page-footer__brand">
+          {% if props.brand_logo_resolved %}
+            <div class="page-footer__logo">
+              <img src="{{ props.brand_logo_resolved }}" alt="{{ props.brand_name|default:'Logo' }}" {% inline_image_attrs block 'brand_logo_width' %} data-inline-image-min="40" data-inline-image-max="800"{% if props.brand_logo_width %} style="width:{{ props.brand_logo_width }}px"{% endif %}>
+            </div>
+          {% endif %}
+          <div class="page-footer__brand-text">
+
+            {% with brand=props.brand_name|default:site.name %}
+              <h2 class="page-footer__name" {% inline_attrs block 'brand_name' %}>{{ brand|inline_richtext }}</h2>
+            {% endwith %}
+            {% if props.brand_tagline %}
+              <p class="page-footer__tagline" {% inline_attrs block 'brand_tagline' %}>{{ props.brand_tagline|inline_richtext }}</p>
+            {% endif %}
+            {% if props.address_html %}
+              <div class="page-footer__address" {% inline_attrs block 'address_html' %}>{{ props.address_html|inline_richtext }}</div>
+            {% endif %}
+          </div>
+          {% with lang_count=enabled_languages|length %}
+            {% if social_links or props.show_language_switcher and lang_count > 1 %}
+              <div class="page-footer__bottom">
+                {% if social_links %}
+                  <div class="page-footer__socials">
+                    {% if props.social_heading %}
+                      <p class="page-footer__title" {% inline_attrs block 'social_heading' %}>{{ props.social_heading|inline_richtext }}</p>
+                    {% endif %}
+                    <div class="page-footer__social-links">
+                      {% for link in social_links %}
+                        <a
+                          href="{{ link.href }}"
+                          class="page-footer__social-link"
+                          aria-label="{{ link.label|default:link.href }}"
+                          {% if link.new_tab %}target="_blank" rel="noopener"{% endif %}
+                        >
+                          {% if link.icon %}
+                            <img src="{% static link.icon %}" alt="" aria-hidden="true">
+                          {% else %}
+                            <span>{{ link.label|default:link.href }}</span>
+                          {% endif %}
+                        </a>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+        {% if links %}
+          <div class="page-footer__group">
+            {% if props.links_heading %}
+              <p class="page-footer__title" {% inline_attrs block 'links_heading' %}>{{ props.links_heading|inline_richtext }}</p>
+            {% endif %}
+            <ul class="page-footer__list">
+              {% for link in links %}
+                <li><a href="{{ link.href }}" {% if link.new_tab %}target="_blank" rel="noopener"{% endif %}>{{ link.label|default:link.href }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if legal %}
+          <div class="page-footer__group">
+            {% if props.legal_heading %}
+              <p class="page-footer__title" {% inline_attrs block 'legal_heading' %}>{{ props.legal_heading|inline_richtext }}</p>
+            {% endif %}
+            <ul class="page-footer__list page-footer__list--compact">
+              {% for link in legal %}
+                <li><a href="{{ link.href }}" {% if link.new_tab %}target="_blank" rel="noopener"{% endif %}>{{ link.label|default:link.href }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</footer>

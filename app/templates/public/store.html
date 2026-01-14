@@ -1,0 +1,18 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Store — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Store" %}</h2>
+<div class="grid" style="grid-template-columns: repeat(3, 1fr)">
+  {% for product in products %}
+    <article class="card">
+      <h3 style="margin:0">{{ product.title }}</h3>
+      {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.title }}" style="max-width:100%;height:auto;margin:.5rem 0">{% endif %}
+      <p class="muted">{{ product.price_display }}</p>
+      <p><a href="{{ product.get_absolute_url }}">{% trans "Details" %}</a></p>
+    </article>
+  {% empty %}
+    <p class="muted">{% trans "No products yet." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

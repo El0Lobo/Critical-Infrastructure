@@ -1,0 +1,94 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+
+{% block title %}Event Categories · CMS{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Event categories" %}</h1>
+    <p class="sub">{% trans "Create and manage labels used to organise events." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Back to events" %}</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>{% trans "Create new category" %}</h2>
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% for field in category_form %}
+      <div class="form-field">
+        {% if field.id_for_label %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label>{{ field.label }}</label>
+        {% endif %}
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}
+          <ul class="errors">
+            {% for error in field.errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Save category" %}</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{% trans "Existing categories" %}</h2>
+  {% if categories %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% trans "Name" %}</th>
+          <th>{% trans "Slug" %}</th>
+          <th>{% trans "Description" %}</th>
+          <th>{% trans "Color" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th>{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category in categories %}
+          <tr>
+            <td>{{ category.name }}</td>
+            <td>{{ category.slug }}</td>
+            <td>{% if category.description %}{{ category.description }}{% else %}<span class="quiet">—</span>{% endif %}</td>
+            <td>
+              {% if category.color %}
+                <span class="pill" style="background-color:#{{ category.color }};color:#000;">#{{ category.color }}</span>
+              {% else %}
+                <span class="quiet">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if category.is_active %}
+                <span class="pill pill-green">{% trans "Active" %}</span>
+              {% else %}
+                <span class="pill">{% trans "Inactive" %}</span>
+              {% endif %}
+            </td>
+            <td class="row-actions">
+              <a class="btn btn-outline" href="{% url 'events:category_edit' category.pk %}">{% trans "Edit" %}</a>
+              <form method="post" action="{% url 'events:category_delete' category.pk %}" onsubmit="return confirm('Delete this category?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-danger">{% trans "Delete" %}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">{% trans "No categories yet." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

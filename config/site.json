@@ -1,0 +1,11 @@
+{
+  "profile_type": "venue",
+  "public_theme": "theme_a",
+  "feature_flags": {
+    "news": true,
+    "events": true,
+    "merch": true,
+    "pos": false,
+    "inventory": true
+  }
+}

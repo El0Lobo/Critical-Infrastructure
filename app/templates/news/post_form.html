@@ -1,0 +1,402 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}{% if mode == "edit" %}{% trans "Edit news" %}{% else %}{% trans "New post" %}{% endif %} · CMS{% endblock %}
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@7.1.2/tinymce.min.js" referrerpolicy="origin"></script>
+  <script>
+    (function () {
+      const DEFAULT_FONT_FORMATS = [
+        "Andale Mono=andale mono,times",
+        "Arial=arial,helvetica,sans-serif",
+        "Arial Black=arial black,avant garde",
+        "Book Antiqua=book antiqua,palatino",
+        "Comic Sans MS=comic sans ms,sans-serif",
+        "Courier New=courier new,courier",
+        "Georgia=georgia,palatino",
+        "Helvetica=helvetica",
+        "Impact=impact,chicago",
+        "Symbol=symbol",
+        "Tahoma=tahoma,arial,helvetica,sans-serif",
+        "Terminal=terminal,monaco",
+        "Times New Roman=times new roman,times",
+        "Trebuchet MS=trebuchet ms,geneva",
+        "Verdana=verdana,geneva",
+        "Webdings=webdings",
+        "Wingdings=wingdings,zapf dingbats"
+      ].join(";");
+
+      function hashString(value) {
+        let hash = 0;
+        const str = String(value || "");
+        for (let i = 0; i < str.length; i += 1) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0;
+        }
+        return Math.abs(hash).toString(36);
+      }
+
+      function guessFontFormat(url, mime) {
+        const mimeMap = {
+          "font/woff2": "woff2",
+          "font/woff": "woff",
+          "font/otf": "opentype",
+          "font/ttf": "truetype",
+          "application/font-woff": "woff",
+        };
+        if (mime && mimeMap[mime.toLowerCase()]) {
+          return mimeMap[mime.toLowerCase()];
+        }
+        const base = (url || "").split("?", 1)[0];
+        const ext = (base.split(".").pop() || "").toLowerCase();
+        return (
+          {
+            woff2: "woff2",
+            woff: "woff",
+            otf: "opentype",
+            ttf: "truetype",
+          }[ext] || "truetype"
+        );
+      }
+
+      function normaliseFontAsset(asset, index) {
+        if (!asset || !asset.url) {
+          return null;
+        }
+        const rawTitle =
+          (asset.title || asset.slug || `Font ${index + 1}`).trim() || `Font ${index + 1}`;
+        const label = rawTitle.replace(/;/g, ",");
+        const idPart =
+          asset.id != null ? String(asset.id) : `${label}-${index}-${asset.url.slice(-6)}`;
+        return {
+          label,
+          family: `CMSNewsFont-${hashString(idPart)}`,
+          url: asset.url,
+          format: guessFontFormat(asset.url, asset.mime_type),
+        };
+      }
+
+      function buildFontFaceCSS(fonts) {
+        if (!fonts.length) {
+          return "";
+        }
+        return fonts
+          .map(
+            (font) =>
+              `@font-face{font-family:'${font.family}';src:url('${font.url}') format('${font.format}');font-display:swap;}`
+          )
+          .join("");
+      }
+
+      function buildFontFamilyFormats(fonts) {
+        const extra = fonts.map((font) => `${font.label}=${font.family}`).join(";");
+        return [DEFAULT_FONT_FORMATS, extra].filter(Boolean).join(";");
+      }
+
+      function loadFontAssets() {
+        return fetch("/cms/pages/api/assets/?kind=font", {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to load fonts");
+            }
+            return response.json();
+          })
+          .then((data) => (data.assets || []).map(normaliseFontAsset).filter(Boolean))
+          .catch(() => []);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        if (!window.tinymce) {
+          return;
+        }
+        const assetHooks = window.cmsTinyMCEAssets ? window.cmsTinyMCEAssets() : {};
+        loadFontAssets().then((fonts) => {
+          const fontFormats = buildFontFamilyFormats(fonts);
+          const fontFaceCss = buildFontFaceCSS(fonts);
+          const baseConfig = {
+            selector: ".tinymce-editor",
+            menubar: "file edit view insert format tools table help",
+            plugins:
+              "preview searchreplace autolink directionality visualblocks visualchars fullscreen image link media table code advlist lists wordcount insertdatetime charmap anchor hr fontfamily fontsize",
+            toolbar:
+              "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image media link table | removeformat code fullscreen",
+            toolbar_mode: "sliding",
+            block_formats: "Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4; Quote=blockquote",
+            font_family_formats: fontFormats,
+            fontsize_formats: "12px 14px 16px 18px 24px 32px 48px",
+            height: 520,
+            branding: false,
+            convert_urls: false,
+            license_key: "gpl",
+            image_caption: true,
+            image_advtab: true,
+            image_title: true,
+            image_class_list: [
+              { title: "Inline", value: "" },
+              { title: "Wrap left", value: "img-wrap-left" },
+              { title: "Wrap right", value: "img-wrap-right" },
+              { title: "Centered", value: "img-centered" },
+              { title: "Full width", value: "img-full" },
+            ],
+            content_style: `
+              ${fontFaceCss}
+              body { font-family: var(--cms-font, 'Inter', system-ui); color: #111; }
+              img.img-wrap-left { float: left; margin: 0 1rem 0.75rem 0; max-width: 50%; }
+              img.img-wrap-right { float: right; margin: 0 0 0.75rem 1rem; max-width: 50%; }
+              img.img-centered { display: block; margin: 0 auto 1rem; }
+              img.img-full { display: block; width: 100%; height: auto; margin: 1rem 0; }
+              figure.image { display: inline-block; margin: 0 0 1.25rem; }
+              figure.image img { margin: 0; }
+              p { line-height: 1.6; }
+            `,
+          };
+          tinymce.init(Object.assign(baseConfig, assetHooks));
+        });
+      });
+    })();
+  </script>
+{% endblock %}
+{% block content %}
+  <h1>
+    {% if mode == "edit" %}
+      {% trans "Edit news post" %}
+    {% else %}
+      {% trans "Create news post" %}
+    {% endif %}
+  </h1>
+  <p class="muted" style="margin:.25rem 0 1rem;">
+    {% trans "Use the language switcher in the top bar to edit translations for this post." %}
+  </p>
+  <div id="news-draft-banner" class="alert alert-info" style="display:none; margin-bottom:1rem;">
+    <span>{% trans "Unsaved draft found for this language." %}</span>
+    <button type="button" class="btn btn-sm" data-action="restore-draft">{% trans "Restore draft" %}</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="discard-draft">{% trans "Discard" %}</button>
+  </div>
+  <form method="post" class="form" id="news-post-form" novalidate data-draft-lang="{{ request.LANGUAGE_CODE }}" data-draft-post="{% if post %}{{ post.pk }}{% else %}new{% endif %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-grid">
+      <label>
+        {% trans "Title" %}
+        <small class="muted d-block">{% trans "Required. The headline shown everywhere." %}</small>
+        {{ form.title.errors }}{{ form.title }}
+      </label>
+      <label>
+        {% trans "Slug" %}
+        <small class="muted d-block">{% trans "Optional. Leave blank to auto-generate the URL path." %}</small>
+        {{ form.slug.errors }}{{ form.slug }}
+      </label>
+      <label>
+        {% trans "Summary" %}
+        <small class="muted d-block">{% trans "Optional excerpt displayed in listings and cards." %}</small>
+        {{ form.summary.errors }}{{ form.summary }}
+      </label>
+      <label>
+        {% trans "Body" %}
+        <small class="muted d-block">{% trans "Required. Full article content edited with TinyMCE." %}</small>
+        {{ form.body.errors }}{{ form.body }}
+      </label>
+      <label>
+        {% trans "Category" %}
+        <small class="muted d-block">{% trans "Optional tag used for filtering and grouping." %}</small>
+        {{ form.category.errors }}{{ form.category }}
+      </label>
+      <label>
+        {% trans "Hero image URL" %}
+        <small class="muted d-block">{% trans "Optional external URL for the banner image." %}</small>
+        {{ form.hero_image.errors }}{{ form.hero_image }}
+      </label>
+      <label>
+        {% trans "Visibility" %}
+        <small class="muted d-block">{% trans "Choose whether this post appears internally or publicly." %}</small>
+        {{ form.visibility.errors }}{{ form.visibility }}
+      </label>
+      <label>
+        {% trans "Status" %}
+        <small class="muted d-block">{% trans "Drafts stay hidden. Published posts go live immediately." %}</small>
+        {{ form.status.errors }}{{ form.status }}
+      </label>
+      <label>
+        {% trans "Pin until" %}
+        <small class="muted d-block">
+          {% blocktrans %}Optional. Keep this post highlighted until the date/time you set.{% endblocktrans %}
+        </small>
+        {{ form.pin_until.errors }}{{ form.pin_until }}
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">{% trans "Save" %}</button>
+      <a class="btn btn-outline-secondary" href="{% url 'news:feed' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('news-post-form');
+      if (!form) {
+        return;
+      }
+      const lang = form.dataset.draftLang || 'en';
+      const postId = form.dataset.draftPost || 'new';
+      const draftKey = `news-post-draft:${postId}:${lang}`;
+      const banner = document.getElementById('news-draft-banner');
+      const restoreBtn = banner ? banner.querySelector('[data-action="restore-draft"]') : null;
+      const discardBtn = banner ? banner.querySelector('[data-action="discard-draft"]') : null;
+      const fieldNames = [
+        'title',
+        'slug',
+        'summary',
+        'body',
+        'category',
+        'hero_image',
+        'visibility',
+        'status',
+        'pin_until',
+      ];
+      let saveTimer = null;
+
+      function getTinyMCEContent() {
+        if (!window.tinymce) {
+          return null;
+        }
+        const editor = window.tinymce.get('id_body') || window.tinymce.activeEditor;
+        return editor ? editor.getContent() : null;
+      }
+
+      function setTinyMCEContent(value) {
+        if (!window.tinymce) {
+          return false;
+        }
+        const editor = window.tinymce.get('id_body') || window.tinymce.activeEditor;
+        if (!editor) {
+          return false;
+        }
+        editor.setContent(value || '');
+        return true;
+      }
+
+      function collectDraft() {
+        const data = {};
+        fieldNames.forEach((name) => {
+          const field = form.elements[name];
+          if (!field) {
+            return;
+          }
+          if (name === 'body') {
+            const editorValue = getTinyMCEContent();
+            data[name] = editorValue != null ? editorValue : field.value;
+          } else {
+            data[name] = field.value;
+          }
+        });
+        return { updatedAt: Date.now(), data };
+      }
+
+      function applyDraft(draft) {
+        if (!draft || !draft.data) {
+          return;
+        }
+        fieldNames.forEach((name) => {
+          const field = form.elements[name];
+          if (!field || draft.data[name] == null) {
+            return;
+          }
+          if (name === 'body') {
+            const applied = setTinyMCEContent(draft.data[name]);
+            if (!applied) {
+              field.value = draft.data[name];
+            }
+          } else {
+            field.value = draft.data[name];
+          }
+        });
+      }
+
+      function scheduleSave() {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+        }
+        saveTimer = setTimeout(() => {
+          try {
+            const payload = collectDraft();
+            localStorage.setItem(draftKey, JSON.stringify(payload));
+          } catch (err) {
+            // Ignore storage errors (private mode / quota).
+          }
+        }, 400);
+      }
+
+      function clearDraft() {
+        try {
+          localStorage.removeItem(draftKey);
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      function maybeShowBanner() {
+        if (!banner) {
+          return;
+        }
+        let stored = null;
+        try {
+          stored = JSON.parse(localStorage.getItem(draftKey) || 'null');
+        } catch (err) {
+          stored = null;
+        }
+        if (!stored || !stored.data) {
+          return;
+        }
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.gap = '.5rem';
+        if (restoreBtn) {
+          restoreBtn.addEventListener('click', function () {
+            applyDraft(stored);
+            banner.style.display = 'none';
+          });
+        }
+        if (discardBtn) {
+          discardBtn.addEventListener('click', function () {
+            clearDraft();
+            banner.style.display = 'none';
+          });
+        }
+      }
+
+      fieldNames.forEach((name) => {
+        const field = form.elements[name];
+        if (field) {
+          field.addEventListener('input', scheduleSave);
+          field.addEventListener('change', scheduleSave);
+        }
+      });
+
+      if (window.tinymce) {
+        window.tinymce.on('AddEditor', function (e) {
+          const editor = e.editor;
+          if (!editor) {
+            return;
+          }
+          editor.on('change keyup', scheduleSave);
+        });
+      }
+
+      maybeShowBanner();
+
+      form.addEventListener('submit', function () {
+        if (window.tinymce && typeof window.tinymce.triggerSave === 'function') {
+          window.tinymce.triggerSave();
+        }
+        clearDraft();
+      });
+
+      window.addEventListener('beforeunload', scheduleSave);
+    });
+  </script>
+{% endblock %}

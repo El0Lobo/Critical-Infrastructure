@@ -1,0 +1,144 @@
+{% load setup_tags i18n %}
+{# expects `assets` and (optionally) `compact` in context #}
+<div class="assets-grid {% if compact %}is-compact{% endif %}">
+  {% with su_is_super=request.user.is_superuser %}
+  {% for a in assets %}
+
+    {% with a_id=a.id|stringformat:"s" %}
+    {% with asset_key="assets.asset."|add:a_id group_key="cms.assets.asset."|add:a_id|add:".actions" %}
+    {% with c_id=a.collection_id|default_if_none:""|stringformat:"s" %}
+    {% with col_key="assets.collection."|add:c_id col_actions_key="cms.assets.collection."|add:c_id|add:".actions" col_toolbar_key="cms.assets.collection."|add:c_id|add:".toolbar" %}
+
+    {# Card visibility: superuser OR asset rule OR grouped-actions rule OR any collection-level rule #}
+    {% if su_is_super or request.user|allow_for:asset_key or request.user|allow_for:group_key or request.user|allow_for:col_key or request.user|allow_for:col_actions_key or request.user|allow_for:col_toolbar_key %}
+
+      <article class="asset-card" data-id="{{ a.id }}" data-asset-id="{{ a.id }}">
+        <div class="thumb-wrap">
+          {% if a.kind == "image" and a.file %}
+            <img src="{{ a.file.url }}" alt="{{ a.title|default:'Image' }}">
+          {% elif a.kind == "video" and a.file %}
+            <video src="{{ a.file.url }}" preload="metadata"></video>
+          {% elif a.kind == "audio" and a.file %}
+            <div class="audio-pill">{% trans "Audio" %}</div>
+          {% elif a.kind == "pdf" %}
+            <div class="pdf-pill">{% trans "PDF" %}</div>
+          {% elif a.kind == "note" %}
+            <div class="note-pill">{% trans "Text" %}</div>
+          {% elif a.file %}
+            {% with fname=a.file.name|lower mime=a.mime_type|default:"" %}
+              {% if ".ttf" in fname or ".otf" in fname or ".woff2" in fname or ".woff" in fname or "font/" in mime %}
+                <div class="font-thumb"
+                     data-font-url="{{ a.file.url }}"
+                     data-font-family="assetFont{{ a.id }}"
+                     data-sample="{{ a.title|default:'Brand' }}"></div>
+              {% else %}
+                <div class="file-pill">{{ a.kind|title }}</div>
+              {% endif %}
+            {% endwith %}
+          {% elif a.is_external %}
+            <div class="link-pill">{{ a.external_domain }}</div>
+          {% else %}
+            <div class="file-pill">{{ a.kind|title }}</div>
+          {% endif %}
+          <span class="vis-pill vis-{{ a.effective_visibility }}">{{ a.effective_visibility|title }}</span>
+        </div>
+
+        <div class="meta">
+          <div class="title"
+               contenteditable="{% if su_is_super or request.user|allow_for:group_key %}true{% else %}false{% endif %}"
+               data-field="title">{{ a.title }}</div>
+
+          <div class="sub" data-subline>
+            <span class="kind-pill {{ a.kind }}-pill" data-kind-pill="{{ a.kind }}">{{ a.kind|title }}</span>
+            {% if a.collection %} &middot; <span class="in-collection" data-collection-name>{{ a.collection.title }}</span>{% endif %}
+            <span class="tag-badges" data-tags-container>
+              {% with atags=a.tags.all %}
+                {% if atags|length %}
+                  &middot;
+                  {% for t in atags %}
+                    <span class="tag">{{ t.name }}</span>{% if not forloop.last %} {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="tag tag-empty">{% trans "no tags" %}</span>
+                {% endif %}
+              {% endwith %}
+            </span>
+          </div>
+
+          <div class="slug-row">
+            Slug:
+            <span class="slug"
+                  contenteditable="{% if su_is_super or request.user|allow_for:group_key %}true{% else %}false{% endif %}"
+                  data-field="slug">{{ a.slug }}</span>
+          </div>
+
+          {% if a.kind == "note" and a.text_content %}
+            <details class="note-preview" data-note-preview>
+              <summary>{% trans "Preview text" %}</summary>
+              <pre>{{ a.text_content|truncatechars:240 }}</pre>
+            </details>
+          {% endif %}
+
+          <div class="actions">
+            {# Grouped Admin Actions (one key + one cog, superuser bypass) #}
+            {% if su_is_super or request.user|allow_for:group_key %}
+              <div class="admin-actions nav-inline" style="display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; position:relative; width:100%;">
+                <div class="btn-group" style="display:flex; flex-direction:column; gap:.35rem; align-items:stretch; border:1px solid #2c59a6ff; padding:4px 6px; width:100%;">
+                  <button
+                    class="btn btn-outline-secondary btn-sm js-toggle-vis"
+                    data-url="{% url 'api-assets-toggle-visibility' a.id %}"
+                    style="width:100%; white-space:nowrap;">
+                    Toggle Visibility
+                  </button>
+
+                  <div class="btn-row" style="display:flex; align-items:center; justify-content:space-between; gap:.35rem; width:100%;">
+                    <div class="left" style="display:inline-flex; gap:.35rem; align-items:center;">
+                      <button
+                        class="btn btn-outline-secondary btn-sm js-asset-edit"
+                        data-edit-url="{% url 'api-assets-detail' a.id %}"
+                        data-update-url="{% url 'api-assets-detail' a.id %}"
+                        data-open-modal="#modal-asset">
+                        Edit
+                      </button>
+
+                      <button
+                        class="btn btn-outline-secondary btn-sm js-asset-delete"
+                        data-url="{% url 'api-assets-detail' a.id %}">
+                        Delete
+                      </button>
+                    </div>
+                    <div class="right" style="display:inline-flex; align-items:center;">
+                      {% if request.real_user and request.real_user.is_superuser %}
+                        {% visibility_cog_inline group_key "Show/hide admin actions for this asset" %}
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="user-actions" style="display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.35rem;">
+              {% if a.file %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ a.file.url }}" target="_blank" rel="noopener">{% trans "Open" %}</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{{ a.file.url }}" download>{% trans "Download" %}</a>
+              {% elif a.url %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ a.url }}" target="_blank" rel="noopener">{% trans "Open" %}</a>
+              {% elif a.text_content %}
+                <button class="btn btn-outline-secondary btn-sm js-copy-text" data-text="{{ a.text_content|escapejs }}">{% trans "Copy Text" %}</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </article>
+
+    {% endif %}
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+    {% endwith %}
+
+  {% empty %}
+    <div class="text-muted">{% trans "No assets." %}</div>
+  {% endfor %}
+  {% endwith %}
+</div>

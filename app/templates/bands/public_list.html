@@ -1,0 +1,26 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Artists & Performers — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<article class="card">
+  <h1>{% trans "Artists & Performers" %}</h1>
+  <form method="get" style="margin:12px 0; display:flex; gap:.5rem;">
+    <input type="text" name="q" value="{{ q }}" placeholder="{% trans 'Search by name…' %}" style="flex:1;">
+    <button class="btn">{% trans "Search" %}</button>
+  </form>
+  <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px;">
+    {% for b in bands %}
+      <a class="card" href="{{ b.get_absolute_url }}" style="text-decoration:none;">
+        {% if b.photo %}<img src="{{ b.photo.url }}" alt="{{ b.name }}" style="width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:6px;">{% endif %}
+        <h3 style="margin:.5rem 0 0 0;">{{ b.name }}</h3>
+        <p class="text-muted" style="margin:.25rem 0 0 0;">{{ b.get_performer_type_display }}</p>
+        {% if b.genre %}
+          <p style="margin:.15rem 0 0 0; font-size:.9rem;">{{ b.genre }}</p>
+        {% endif %}
+      </a>
+    {% empty %}
+      <p class="text-muted">{% trans "No performers published yet." %}</p>
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}

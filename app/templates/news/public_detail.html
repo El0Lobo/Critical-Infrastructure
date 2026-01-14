@@ -1,0 +1,18 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block content %}
+<article class="news-public-detail">
+  <div class="container">
+    <p class="news-public__meta">
+      <a href="{% url 'news_public:public_news_index' %}">{% trans "Back to news" %}</a>
+      · <time datetime="{{ post.display_timestamp|date:'c' }}">{{ post.display_timestamp|date:"M d, Y" }}</time>
+      {% if post.category %} · <span>{{ post.category }}</span>{% endif %}
+    </p>
+    <h1>{{ post.title }}</h1>
+    {% if post.summary %}<p class="lead">{{ post.summary }}</p>{% endif %}
+    <div class="news-public-detail__body">
+      {{ post.body|safe }}
+    </div>
+  </div>
+</article>
+{% endblock %}

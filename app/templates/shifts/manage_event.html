@@ -1,0 +1,56 @@
+{% extends "cms/base_cms.html" %}
+{% load static setup_tags i18n %}
+
+{% block title %}Shifts · {{ event.title }}{% endblock %}
+
+{% block extra_head %}{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Manage shifts" %}</h1>
+    <p class="sub">{{ event.title }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:edit' event.slug %}">{% trans "Back to event" %}</a>
+    <a class="btn btn-outline" href="{% url 'shifts:index' %}">{% trans "Back to shifts" %}</a>
+  </div>
+</section>
+
+<form method="post" class="page-form">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>{% trans "Title" %}</th>
+        <th>{% trans "Start" %}</th>
+        <th>{% trans "End" %}</th>
+        <th>{% trans "Capacity" %}</th>
+        <th>{% trans "Self signup" %}</th>
+        <th>{% trans "Template" %}</th>
+        <th>{% trans "Status" %}</th>
+        <th>{% trans "Remove" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in formset %}
+        <tr>
+          {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+          <td class="field-col">{{ form.title }}{% for err in form.title.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col">{{ form.start_at }}{% for err in form.start_at.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col">{{ form.end_at }}{% for err in form.end_at.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col small">{{ form.capacity }}{% for err in form.capacity.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col tiny">{{ form.allow_signup }}{% for err in form.allow_signup.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col">{{ form.template }}{% for err in form.template.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col">{{ form.status }}{% for err in form.status.errors %}<p class="error">{{ err }}</p>{% endfor %}</td>
+          <td class="field-col tiny">{{ form.DELETE }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="page-actions">
+    <button type="submit" class="btn btn-primary">{% trans "Save" %}</button>
+  </div>
+</form>
+{% endblock %}

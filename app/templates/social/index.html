@@ -1,0 +1,24 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}Social · CMS{% endblock %}
+{% block content %}
+<h1>{% trans "Social Autopost" %}</h1>
+<div class="toolbar">
+  <a class="btn" href="/cms/social/create/">{% trans "+ New" %}</a>
+  <input placeholder="Search (not wired yet)" style="padding:.5rem;border-radius:8px;border:1px solid var(--line);background:#0f1419;color:#e9f1f2;width:240px">
+</div>
+{% if rows %}
+<table class="tbl">
+  <thead><tr><th>{% trans "channel" %}</th><th>{% trans "mode" %}</th><th>{% trans "last post" %}</th><th>{% trans "status" %}</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr onclick="window.location='/cms/social/{{ r.slug }}/edit/'" style="cursor:pointer">
+      <td>{{ r.channel }}</td><td>{{ r.mode }}</td><td>{{ r.last_post }}</td><td>{{ r.status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <div class="empty">{% trans "Nothing here yet. Click “New”." %}</div>
+{% endif %}
+{% endblock %}

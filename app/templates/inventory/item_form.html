@@ -1,0 +1,112 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% if item %}Edit inventory item{% else %}New inventory item{% endif %}</h1>
+<form method="post" class="vstack gap-4">
+  {% csrf_token %}
+  <section class="card p-3">
+    <h2 class="h5 mb-3">{% trans "Basics" %}</h2>
+    <div class="row g-3">
+      <div class="col-md-6">{{ form.name.label_tag }} {{ form.name }}</div>
+      <div class="col-md-6">{{ form.category.label_tag }} {{ form.category }}</div>
+      <div class="col-md-4">{{ form.kind.label_tag }} {{ form.kind }}</div>
+      <div class="col-md-4">{{ form.location.label_tag }} {{ form.location }}</div>
+      <div class="col-md-4">{{ form.is_active.label_tag }} {{ form.is_active }}</div>
+    </div>
+  </section>
+
+  <section class="card p-3">
+    <h2 class="h5 mb-3">{% trans "Descriptions" %}</h2>
+    <div class="row g-3">
+      <div class="col-md-6">{{ form.description.label_tag }} {{ form.description }}</div>
+      <div class="col-md-6">
+        <label class="form-check form-switch mb-2">{{ form.public_visible }} Show on public site</label>
+        {{ form.public_description.label_tag }} {{ form.public_description }}
+        {{ form.public_url.label_tag }} {{ form.public_url }}
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-3">
+    <h2 class="h5 mb-3">{% trans "Units & packaging" %}</h2>
+    <div class="row g-3">
+      <div class="col-md-4">{{ form.unit.label_tag }} {{ form.unit }}</div>
+      <div class="col-md-4">{{ form.unit_label.label_tag }} {{ form.unit_label }}</div>
+      <div class="col-md-4">{{ form.pack_quantity.label_tag }} {{ form.pack_quantity }} {{ form.pack_unit.label_tag }} {{ form.pack_unit }}</div>
+    </div>
+    {% if package_formset %}
+      {{ package_formset.management_form }}
+      <table class="table table-sm table-dark mt-3">
+        <thead><tr><th>{% trans "Label" %}</th><th>{% trans "Quantity" %}</th><th>{% trans "Unit" %}</th><th>{% trans "Notes" %}</th><th>{% trans "Default" %}</th><th>{% trans "Delete" %}</th></tr></thead>
+        <tbody>
+          {% for pkg_form in package_formset %}
+            <tr>
+              <td>{{ pkg_form.label }}</td>
+              <td>{{ pkg_form.quantity }}</td>
+              <td>{{ pkg_form.unit }}</td>
+              <td>{{ pkg_form.notes }}</td>
+              <td class="text-center">{{ pkg_form.is_default }}</td>
+              <td class="text-center">{% if pkg_form.DELETE %}{{ pkg_form.DELETE }}{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+
+  <section class="card p-3">
+    <h2 class="h5 mb-3">{% trans "Stock targets" %}</h2>
+    <div class="row g-3">
+      <div class="col-md-4">{{ form.current_stock.label_tag }} {{ form.current_stock }}</div>
+      <div class="col-md-4">{{ form.desired_stock.label_tag }} {{ form.desired_stock }}</div>
+      <div class="col-md-4">{{ form.reorder_point.label_tag }} {{ form.reorder_point }}</div>
+    </div>
+  </section>
+
+  <section class="card p-3">
+    <h2 class="h5 mb-3">{% trans "Linked items" %}</h2>
+    <div class="row g-3">
+      <div class="col-md-6">{{ form.menu_items.label_tag }} {{ form.menu_items }}</div>
+      <div class="col-md-6">{{ form.merch_products.label_tag }} {{ form.merch_products }}</div>
+    </div>
+    <label class="form-check form-switch mt-2">
+      {{ form.auto_track_sales }} Auto track POS sales
+    </label>
+  </section>
+
+  <div>
+    <button class="btn btn-primary">{% trans "Save" %}</button>
+    <a class="btn btn-secondary" href="{% url 'inventory:inventory_manage' %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+
+{% if item %}
+  {% if logs %}
+  <div class="mt-4">
+    <h2>{% trans "Recent adjustments" %}</h2>
+    <form class="row g-3 mb-3" method="post" action="{% url 'inventory:inventory_item_adjust' item.slug %}">
+      {% csrf_token %}
+      <div class="col-md-3">
+        <label class="form-label">{% trans "Adjust stock (+/-)" %}</label>
+        <input class="form-control" type="number" name="delta" step="0.01" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{% trans "Note" %}</label>
+        <input class="form-control" type="text" name="note">
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">{% trans "Apply adjustment" %}</button>
+      </div>
+    </form>
+    <ul class="list-group">
+      {% for log in logs %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>{{ log.created_at|date:"M d, H:i" }} — {{ log.get_reason_display }} ({{ log.change_amount }})</span>
+          <span class="text-muted">{{ log.created_by }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

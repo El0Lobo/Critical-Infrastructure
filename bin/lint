@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""
+Code Linter - Check code quality with ruff
+Platform-agnostic linter for Windows, Linux, and macOS
+"""
+import os
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    check_virtualenv,
+    console,
+    get_project_root,
+    get_venv_python,
+    print_error,
+    print_header,
+    print_info,
+    print_success,
+    run_command,
+)
+
+
+def has_ruff() -> bool:
+    """Check if ruff is installed"""
+    venv_python = get_venv_python()
+    result = run_command([str(venv_python), "-c", "import ruff"], check=False, capture_output=True)
+    return result.returncode == 0
+
+
+def run_ruff(fix: bool = False):
+    """Run ruff linter"""
+    venv_python = get_venv_python()
+
+    cmd = [str(venv_python), "-m", "ruff", "check", "app/"]
+    if fix:
+        cmd.append("--fix")
+
+    print_header("Linting Code", "Using ruff")
+    if fix:
+        print_info("Auto-fixing enabled - safe fixes will be applied")
+    console.print()
+
+    result = run_command(cmd, check=False)
+
+    console.print()
+    if result.returncode == 0:
+        print_success("No linting issues found!")
+    else:
+        print_error("Linting issues detected - please review and fix")
+        if not fix:
+            print_info("Run with --fix to automatically fix safe issues")
+
+    return result.returncode
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Check virtualenv
+        if not check_virtualenv():
+            sys.exit(1)
+
+        # Check if --fix flag was passed
+        fix = "--fix" in sys.argv
+
+        # Check if ruff is installed
+        if not has_ruff():
+            print_error("ruff is not installed")
+            print_info("Install with: pip install -r requirements-dev.txt")
+            sys.exit(1)
+
+        # Run linter
+        exit_code = run_ruff(fix=fix)
+        sys.exit(exit_code)
+
+    except KeyboardInterrupt:
+        console.print()
+        print_error("Linting interrupted by user")
+        sys.exit(130)
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

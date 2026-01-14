@@ -1,0 +1,89 @@
+:root {
+  --setup-gap: 12px;
+  --setup-gap-lg: 16px;
+  --setup-radius: 8px;
+  --setup-border: 2px;
+  --setup-card-bg: rgba(175, 179, 184, 0.12);
+  --setup-card-bg-strong: rgba(175, 179, 184, 0.24);
+  --setup-border-color: rgba(255,255,255,0.18);
+  --setup-border-strong: rgba(255,255,255,0.28);
+  --setup-muted: #b8bcc3;
+  --setup-accent: #faebd7;
+}
+
+#setup-root { display: block; }
+#setup-root h1 { margin: 0 0 6px 0; }
+#setup-root .lead-muted,
+#setup-root .text-muted { color: var(--setup-muted); }
+
+.stack { display: grid; gap: var(--setup-gap); }
+.stack-lg { display: grid; gap: var(--setup-gap-lg); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--setup-gap); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--setup-gap); }
+.field { display: grid; gap: 6px; }
+.field.field--full { grid-column: 1 / -1; max-width: fit-content;}
+
+.card { border: var(--setup-border) solid var(--setup-border-color); border-radius: var(--setup-radius); background: var(--setup-card-bg); padding: 12px; }
+.card + .card { margin-top: var(--setup-gap-lg); }
+.card h2 { display:flex; align-items:center; gap:.6rem; margin:0 0 8px; font-size:1.15rem; }
+.card h2 small { color: var(--setup-muted); font-weight:400; }
+.card .collapse-toggle { appearance:none; border:0; background:none; padding:0; margin-right:.25rem; font:inherit; line-height:1; cursor:pointer; }
+.card .collapse-toggle .chev { display:inline-block; transition:transform .18s ease; color:var(--setup-accent); font-size:1.1em; }
+.card[aria-expanded="true"] .collapse-toggle .chev { transform:rotate(90deg); }
+.card__body { display:block; }
+.card[aria-expanded="false"] .card__body { display:none; }
+
+#setup-ops { margin-bottom: calc(var(--setup-gap-lg) * 1.5); }
+.card--seeding .action-list { display:grid; gap:var(--setup-gap); }
+.card--seeding .action { border-top:1px solid rgba(255,255,255,0.08); padding-top:.5rem; display:flex; flex-direction:column; gap:.45rem; }
+.card--seeding .action:first-child { border-top:0; padding-top:0; }
+
+.visibility-anchor { position:relative; display:inline-flex; margin-left:.4rem; }
+
+.address-save { display:flex; flex-direction:column; gap:.35rem; }
+.address-save button { align-self:flex-start; }
+
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+.geo-suggestions { position:relative; }
+.geo-suggestions[hidden] { display:none !important; }
+.geo-suggestions__list {
+  list-style:none;
+  margin:6px 0 0;
+  padding:8px;
+  background:rgba(0,0,0,0.55);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:6px;
+  max-height:240px;
+  overflow-y:auto;
+  display:grid;
+  gap:4px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+.geo-suggestions__option {
+  width:100%;
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+  padding:4px 6px;
+  border-radius:4px;
+  cursor:pointer;
+}
+.geo-suggestions__option:hover,
+.geo-suggestions__option:focus-visible {
+  background:rgba(255,255,255,0.08);
+  outline:0;
+}
+
+datalist#currency_list option { color:#000; }

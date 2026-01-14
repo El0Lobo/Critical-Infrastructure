@@ -1,0 +1,27 @@
+{% extends 'cms/base_cms.html' %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Menu" %}</h1>
+<table class="table">
+  <thead><tr><th>{% trans "Name" %}</th><th>{% trans "Category" %}</th><th>{% trans "Flags" %}</th><th>{% trans "Variants" %}</th><th></th></tr></thead>
+  <tbody>
+    {% for i in items %}
+    <tr>
+      <td>{{ i.name }} {% if i.featured %}<span class="badge bg-warning">{% trans "Featured" %}</span>{% endif %}</td>
+      <td>{{ i.category.name }}</td>
+      <td>
+        {% if i.visible_public %}<span class="badge bg-success">{% trans "Public" %}</span>{% else %}<span class="badge bg-secondary">{% trans "Hidden" %}</span>{% endif %}
+        {% if i.is_sold_out %} <span class="badge bg-danger">{% trans "Sold out" %}</span>{% endif %}
+        {% if i.is_new %} <span class="badge bg-info text-dark">{% trans "New" %}</span>{% endif %}
+      </td>
+      <td>
+        {% for v in i.variants.all %}
+          <div>{{ v.label|default:v.quantity }} {{ v.unit.code }} — {% if v.price == 0 %}Free{% else %}€{{ v.price }}{% endif %}{% if v.abv %} · {{ v.abv }}% ABV{% endif %}</div>
+        {% empty %}<em>{% trans "No variants" %}</em>{% endfor %}
+      </td>
+      <td><a class="btn btn-sm btn-secondary" href="{% url 'menu:item_edit' i.slug %}">{% trans "Edit" %}</a></td>
+    </tr>
+    {% empty %}<tr><td colspan="5">{% trans "No items." %}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

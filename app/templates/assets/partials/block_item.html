@@ -1,0 +1,65 @@
+{% load i18n %}
+{% if asset.effective_visibility != "public" and mode == "preview" %}
+  <div class="asset-protected">{% trans "Not publicly visible." %}</div>
+{% else %}
+  {% if mode == "download" %}
+    {% if asset.file %}
+      <a class="asset-download" href="{{ asset.file.url }}" download>{{ asset.title }}</a>
+    {% elif asset.url %}
+      <a class="asset-link" href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+    {% elif asset.text_content %}
+      <pre class="asset-text">{{ asset.text_content }}</pre>
+    {% endif %}
+  {% elif mode == "link" %}
+    {% if asset.url %}
+      <a class="asset-link" href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+    {% elif asset.file %}
+      <a class="asset-link" href="{{ asset.file.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+    {% else %}
+      <span>{{ asset.title }}</span>
+    {% endif %}
+  {% else %}
+    {% if asset.kind == "image" and asset.file %}
+      <figure class="asset-figure image">
+        <img src="{{ asset.file.url }}" alt="{{ asset.title }}">
+        <figcaption>{{ asset.title }}</figcaption>
+      </figure>
+    {% elif asset.kind == "video" %}
+      <figure class="asset-figure video">
+        {% if asset.file %}
+          <video controls preload="metadata" src="{{ asset.file.url }}"></video>
+        {% else %}
+          <a href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+        {% endif %}
+        <figcaption>{{ asset.title }}</figcaption>
+      </figure>
+    {% elif asset.kind == "audio" %}
+      <figure class="asset-figure audio">
+        {% if asset.file %}
+          <audio controls preload="metadata" src="{{ asset.file.url }}"></audio>
+        {% else %}
+          <a href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+        {% endif %}
+        <figcaption>{{ asset.title }}</figcaption>
+      </figure>
+    {% elif asset.kind == "pdf" %}
+      <div class="asset-pdf">
+        {% if asset.file %}
+          <iframe src="{{ asset.file.url }}" title="{{ asset.title }}" loading="lazy"></iframe>
+        {% else %}
+          <a href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+        {% endif %}
+      </div>
+    {% elif asset.kind == "note" %}
+      <pre class="asset-text">{{ asset.text_content }}</pre>
+    {% else %}
+      {% if asset.url %}
+        <a class="asset-link" href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+      {% elif asset.file %}
+        <a class="asset-download" href="{{ asset.file.url }}" target="_blank" rel="noopener">{{ asset.title }}</a>
+      {% else %}
+        <span>{{ asset.title }}</span>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}

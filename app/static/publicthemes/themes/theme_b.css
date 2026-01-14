@@ -1,0 +1,10 @@
+:root {
+  --bg: #0b3d2e;
+  --card: rgba(255,255,255,0.04);
+  --text: #e5e7eb;
+  --accent: #f59e0b;
+  --line: rgba(255,255,255,0.1);
+}
+body { background: var(--bg); color: var(--text); }
+a { color: var(--accent); }
+.card { background: var(--card); border:1px solid var(--line); padding:1rem; border-radius: 12px; }

@@ -1,0 +1,9 @@
+{% extends "base_public.html" %}
+{% load i18n %}
+{% block title %}About{% endblock %}
+{% block content %}
+<section class="container">
+  <h1>About {{ sitecfg.profile_type|title }}</h1>
+  <p>{% trans "Edit this page in the CMS later. This is a placeholder." %}</p>
+</section>
+{% endblock %}

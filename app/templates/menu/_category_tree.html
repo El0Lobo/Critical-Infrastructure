@@ -1,0 +1,66 @@
+{% load i18n %}
+{% with node as c %}
+  <div class="card mb-2 menu-card">
+    <div class="card-body menu-card__header">
+      <div>
+        <strong>{{ c.name }}</strong>
+        {% if c.parent %}
+          <span class="text-muted"> · depth {{ c.depth }}</span>
+        {% endif %}
+      </div>
+      <div class="menu-card__actions">
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'menu:category_create_child' c.slug %}">{% trans "+ Subcategory" %}</a>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'menu:item_create_here' c.slug %}">{% trans "+ Item here" %}</a>
+        <a class="btn btn-sm btn-secondary" href="{% url 'menu:category_edit' c.slug %}">{% trans "Edit" %}</a>
+        <a class="btn btn-sm btn-danger" href="{% url 'menu:category_delete' c.slug %}">{% trans "Delete" %}</a>
+      </div>
+    </div>
+
+    {% if c.items.all %}
+      <ul class="list-group list-group-flush menu-item-list">
+        {% for i in c.items.all %}
+          <li class="list-group-item menu-item-row">
+            <div class="menu-item-info">
+              <div class="menu-item-title">
+                <span>{{ i.name }}</span>
+                {% if i.featured %}<span class="badge bg-warning text-dark">{% trans "Featured" %}</span>{% endif %}
+                {% if i.is_sold_out %}<span class="badge bg-danger">{% trans "Sold out" %}</span>{% endif %}
+                {% if i.is_new %}<span class="badge bg-info text-dark">{% trans "New" %}</span>{% endif %}
+              </div>
+              {% if i.description %}<div class="text-muted small">{{ i.description }}</div>{% endif %}
+              {% if i.variants.all %}
+                <ul class="menu-variant-list">
+                  {% for variant in i.variants.all %}
+                    <li class="menu-variant-row">
+                      <span class="variant-label">{{ variant.label|default:"Standard" }}</span>
+                      <span class="variant-meta">
+                        {% if variant.quantity %}
+                          {{ variant.quantity|floatformat:"-2" }} <small>{{ variant.unit.code|lower }}</small>
+                        {% endif %}
+                      </span>
+                      {% if variant.price is not None %}
+                        <span class="variant-price">{{ variant.price|floatformat:2 }} {{ currency }}</span>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+            <div class="menu-item-actions">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'menu:item_edit' i.slug %}">{% trans "Edit" %}</a>
+              <a class="btn btn-sm btn-danger" href="{% url 'menu:item_delete' i.slug %}">{% trans "Delete" %}</a>
+            </div>
+         </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if c.children.exists %}
+      <div class="menu-children">
+        {% for child in c.children.all %}
+          {% include 'menu/_category_tree.html' with node=child currency=currency %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endwith %}

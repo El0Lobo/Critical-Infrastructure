@@ -1,0 +1,29 @@
+{% load i18n %}
+{# templates/users/group_hierarchy.html #}
+{% extends "cms/base_cms.html" %}
+
+{% block content %}
+<h1>{% trans "Group Hierarchy" %}</h1>
+<form method="post" style="margin-top:12px;">
+  {% csrf_token %}
+  <table class="table" style="max-width:640px;">
+    <thead><tr><th>{% trans "Group" %}</th><th style="width:200px;">{% trans "Rank" %}</th></tr></thead>
+    <tbody>
+      {% for g, form in forms_list %}
+      <tr>
+        <td>
+          {{ form.group_id }}  {# hidden #}
+          {{ form.name }}
+        </td>
+        <td>{{ form.rank }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="display:flex;justify-content:flex-end;gap:.5rem;">
+    <a class="btn btn-light" href="{% url 'users:index' %}">{% trans "Cancel" %}</a>
+    <button class="btn btn-primary" type="submit">{% trans "Save" %}</button>
+  </div>
+</form>
+<p class="text-muted" style="margin-top:.5rem;">{% trans "Lower number = higher priority. Users in multiple groups appear under the highest-priority one." %}</p>
+{% endblock %}

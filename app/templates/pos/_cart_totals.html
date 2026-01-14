@@ -1,0 +1,13 @@
+{% load i18n %}
+{% with totals=cart.totals show_disc=pos_config.show_discounts|default_if_none:True show_tax=pos_config.show_tax|default_if_none:True %}
+<div class="totals">
+  <div><span>{% trans "Subtotal" %}</span><span data-total-subtotal>{{ totals.subtotal }}</span></div>
+  {% if show_disc %}
+    <div><span>{% trans "Discounts" %}</span><span data-total-discount>{{ totals.discount_total }}</span></div>
+  {% endif %}
+  {% if show_tax %}
+    <div><span>{% trans "Tax" %}</span><span data-total-tax>{{ totals.tax_total }}</span></div>
+  {% endif %}
+  <div class="grand"><span>{% trans "Total" %}</span><span data-total-grand>{{ totals.grand_total }}</span></div>
+</div>
+{% endwith %}

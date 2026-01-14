@@ -1,0 +1,28 @@
+{% load i18n %}
+<section class="page-block page-block--news-latest" data-block-id="{{ block.id }}">
+  <div class="page-block__container">
+    <header class="page-block__header">
+      {% if props.title %}<h2>{{ props.title }}</h2>{% endif %}
+      {% if props.subtitle %}<p class="muted">{{ props.subtitle }}</p>{% endif %}
+    </header>
+    <div class="news-latest__grid">
+      {% for post in posts %}
+        <article class="news-card--public">
+          <p class="news-card--meta">
+            {% if post.display_date %}<time datetime="{{ post.published_at }}">{{ post.display_date }}</time>{% endif %}
+            {% if post.category %} · <span>{{ post.category }}</span>{% endif %}
+          </p>
+          <h3><a href="{{ post.url }}">{{ post.title }}</a></h3>
+          {% if post.summary %}<p>{{ post.summary }}</p>{% endif %}
+        </article>
+      {% empty %}
+        <p>{% trans "No news yet." %}</p>
+      {% endfor %}
+    </div>
+    {% if cta_url %}
+      <div class="news-latest__cta">
+        <a href="{{ cta_url }}">{{ props.link_label|default:"View all news" }}</a>
+      </div>
+    {% endif %}
+  </div>
+</section>

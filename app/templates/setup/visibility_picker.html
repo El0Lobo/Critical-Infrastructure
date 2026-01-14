@@ -1,0 +1,182 @@
+{% load static i18n %}
+
+<style>
+.popover {
+  position: absolute; /* relative to .nav-inline */
+  z-index: 50;
+  margin-top: .25rem;
+  margin-left: 0.5rem;
+  background: var(--popover-bg, #1e1e1e);
+  color: var(--popover-fg, #fff);
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 300px;   /* prevent tall overflow */
+  overflow: auto;
+  box-shadow: 0 6px 24px rgba(0,0,0,.2);
+  font-size: 0.92rem;
+}
+.popover h4 { margin: 0 0 .5rem 0; font-size: .95rem; font-weight: 600; }
+.popover .roles { margin: .25rem 0 .5rem; }
+.popover .roles label { display:flex; align-items:center; gap:.4rem; padding:2px 0; }
+.popover .row { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
+.popover .muted { opacity:.7; font-size:.85em; }
+.popover .saved { color:#69d08a; font-weight:600; }
+.popover .actions { display:flex; gap:.5rem; }
+.popover .btn { padding:.25rem .5rem; border-radius:6px; border:1px solid rgba(255,255,255,.15); cursor:pointer; background:transparent; color:inherit; }
+.popover .btn:hover { background: rgba(255,255,255,.06); }
+</style>
+
+<!-- Single popover -->
+<div class="popover" data-vis-popover data-key="{{ key }}">
+  <div class="row">
+    <h4>{{ label }}</h4>
+    {% if saved %}<span class="saved">{% trans "✓ Saved" %}</span>{% endif %}
+  </div>
+
+  {% if not all_groups %}
+    <div class="muted">{% trans "No roles defined yet." %}</div>
+    <div class="actions" style="margin-top:.5rem;">
+      <a class="btn" href="{% url 'setup:setup' %}#roles">{% trans "Define roles" %}</a>
+      <button class="btn" type="button" onclick="closeVisPopover(this)">{% trans "Close" %}</button>
+    </div>
+  {% else %}
+<form hx-post="{% url 'setup:visibility_picker' %}"
+      hx-target="this" hx-swap="outerHTML">
+  {% csrf_token %}
+  <input type="hidden" name="key" value="{{ key }}">
+  <div class="roles-list">
+    {% for g in all_groups %}
+      <label>
+        <input type="checkbox" name="groups" value="{{ g.id }}"
+               {% if g in rule.allowed_groups.all %}checked{% endif %}>
+        {{ g.name }}
+      </label><br>
+    {% endfor %}
+            <p class="muted" style="margin:0.25rem 0 0;">
+        Check those who should have access to this item.
+      </p>
+  </div>
+  <label style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;color:#f88;">
+    <input type="checkbox" name="is_disabled" value="1" {% if not rule.is_enabled %}checked{% endif %}>
+    <span>{% trans "Disable this item completely" %}</span>
+  </label>
+  <p class="muted" style="margin:0.25rem 0 0;">
+    Disabled items are hidden everywhere. Re-enable them later from:
+    <a href="{% url 'setup:visibility_disabled' %}" target="_blank" rel="noopener">{% trans "Disabled items" %}</a>
+  </p>
+  <div style="margin-top:8px;">
+    <button type="submit" class="btn btn-primary">{% trans "Save" %}</button>
+  </div>
+</form>
+
+  {% endif %}
+</div>
+
+<script>
+(function(){
+  // ===== Utility =====
+  function isScrollable(el){
+    const cs = getComputedStyle(el);
+    return /(auto|scroll)/.test(cs.overflow + cs.overflowY + cs.overflowX);
+  }
+  function closestScrollContainer(start){
+    let el = start;
+    while (el && el !== document.body){
+      if (isScrollable(el)) return el;
+      el = el.parentElement;
+    }
+    return start.closest('.nav-inline') || document.body;
+  }
+  function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
+
+  // ===== Positioning =====
+  const pop = document.currentScript.previousElementSibling; // .popover
+  if (!pop) return;
+  const container = pop.closest('.nav-inline') || pop.parentElement || document.body;
+
+  // Remove any existing popovers in this container (only one at a time)
+  container.querySelectorAll('.popover[data-vis-popover]').forEach(el => { if (el !== pop) el.remove(); });
+
+  // Find the cog that triggered this request (last focused .cfg-cog inside container)
+  let trigger = container.querySelector('.cfg-cog:focus');
+  if (!trigger) {
+    // fallback: nearest cog in the container
+    const cogs = container.querySelectorAll('.cfg-cog');
+    trigger = cogs[cogs.length - 1] || container;
+  }
+
+  // Position relative to container
+  const cRect = container.getBoundingClientRect();
+  const tRect = trigger.getBoundingClientRect();
+  // temp visible to measure
+  pop.style.visibility = 'hidden';
+  pop.style.left = '0px';
+  pop.style.top  = '0px';
+  pop.style.maxHeight = '300px';
+  document.body.offsetHeight; // force layout
+  const pRect = pop.getBoundingClientRect();
+
+  const scrollBox = closestScrollContainer(container);
+  const sRect = scrollBox.getBoundingClientRect();
+
+  // Desired position below the trigger
+  let left = tRect.left - cRect.left; // relative X
+  let top  = (tRect.bottom - cRect.top) + 6;
+
+  // Clamp within the visible area of container/scrollbox
+  const maxLeft = (sRect.right - cRect.left) - pRect.width - 8;
+  const minLeft = Math.max(0, sRect.left - cRect.left + 8);
+  left = clamp(left, minLeft, maxLeft);
+
+  // If it would overflow bottom of the scroll box, open above
+  const wouldOverflowBottom = (tRect.bottom + 6 + pRect.height) > sRect.bottom;
+  if (wouldOverflowBottom){
+    top = (tRect.top - cRect.top) - pRect.height - 6;
+  }
+
+  pop.style.left = left + 'px';
+  pop.style.top  = top  + 'px';
+  pop.style.visibility = 'visible';
+
+  // ===== Close behaviors =====
+  function removeAll(){
+    container.querySelectorAll('.popover[data-vis-popover]').forEach(el => el.remove());
+  }
+  window.closeVisPopover = function(el){
+    const p = el.closest('.popover[data-vis-popover]');
+    if (p) p.remove();
+  }
+
+  // Click outside closes
+  const outsideClick = (ev) => {
+    if (!pop.contains(ev.target) && !ev.target.classList.contains('cfg-cog')) {
+      removeAll();
+      cleanup();
+    }
+  };
+  document.addEventListener('click', outsideClick);
+
+  // Esc closes
+  const onKey = (ev) => {
+    if (ev.key === 'Escape') { removeAll(); cleanup(); }
+  };
+  document.addEventListener('keydown', onKey);
+
+  // Scroll/resize closes
+  const onScroll = () => { removeAll(); cleanup(); };
+  const onResize = () => { removeAll(); cleanup(); };
+  closestScrollContainer(container).addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onResize);
+
+  // Clean up listeners when popover is gone
+  function cleanup(){
+    document.removeEventListener('click', outsideClick);
+    document.removeEventListener('keydown', onKey);
+    closestScrollContainer(container).removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+  }
+})();
+</script>

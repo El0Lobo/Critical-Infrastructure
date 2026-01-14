@@ -1,0 +1,422 @@
+#!/usr/bin/env python3
+"""
+Django Project Setup Script
+Platform-agnostic setup for Windows, Linux, and macOS
+"""
+import base64
+import os
+import sys
+import subprocess
+import platform
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    console,
+    print_success,
+    print_error,
+    print_info,
+    print_warning,
+    get_project_root,
+    get_venv_python,
+    get_venv_path,
+    get_venv_pip_cmd,
+    run_command,
+    show_banner,
+    print_section,
+)
+
+
+def print_step(message):
+    """Print a step message with formatting"""
+    console.print(f"\n[cyan bold]→ {message}[/cyan bold]")
+
+
+def get_python_executable():
+    """Get the appropriate Python executable for the current platform"""
+    if platform.system() == "Windows":
+        # Try common Python commands on Windows
+        for cmd in ["python", "python3", "py"]:
+            try:
+                result = subprocess.run(
+                    [cmd, "--version"], capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    return cmd
+            except (subprocess.SubprocessError, FileNotFoundError):
+                continue
+        print_error("Python not found. Please install Python 3.8+ and add it to PATH.")
+        sys.exit(1)
+    else:
+        # Unix-like systems
+        for cmd in ["python3", "python"]:
+            try:
+                result = subprocess.run(
+                    [cmd, "--version"], capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0 and "Python 3" in result.stdout:
+                    return cmd
+            except (subprocess.SubprocessError, FileNotFoundError):
+                continue
+        print_error("Python 3 not found. Please install Python 3.8+.")
+        sys.exit(1)
+
+
+def check_uv_available():
+    """Check if uv is available on the system"""
+    try:
+        result = subprocess.run(
+            ["uv", "--version"], capture_output=True, text=True, timeout=5
+        )
+        return result.returncode == 0
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
+def get_package_manager():
+    """
+    Get the best available package manager (uv or pip).
+    Returns tuple of (command_name, is_uv)
+    """
+    if check_uv_available():
+        print_info("Using uv for faster dependency installation (10-100x faster)")
+        return (["uv", "pip"], True)
+    else:
+        return (get_venv_pip_cmd(), False)
+
+
+def check_venv_sync():
+    """
+    Check if the virtual environment is out of sync with requirements.
+    If so, remove it to force a fresh rebuild.
+    """
+    venv_path = get_venv_path()
+
+    if not venv_path.exists():
+        return  # No venv to check
+
+    print_step("Checking virtual environment sync")
+
+    # Check if we can import key packages
+    python_cmd = str(get_venv_python())
+
+    # If the executable itself is missing (platform mismatch), reset the venv.
+    if not Path(python_cmd).exists():
+        print_info("Virtual environment executable not found (OS/venv mismatch?)")
+        print_info("Removing old virtual environment...")
+        import shutil
+        try:
+            shutil.rmtree(venv_path)
+            print_success("Removed missing/invalid virtual environment")
+        except Exception as e:
+            print_error(f"Failed to remove venv: {e}")
+            print_info("You may need to manually run: rm -rf .venv")
+            sys.exit(1)
+        return
+
+    # Try to import Django as a sanity check
+    result = run_command(
+        [python_cmd, "-c", "import django; import environ"],
+        check=False,
+        capture_output=True,
+    )
+
+    if getattr(result, "returncode", 1) != 0:
+        print_info("Virtual environment appears out of sync")
+        print_info("Removing old virtual environment...")
+
+        import shutil
+
+        try:
+            shutil.rmtree(venv_path)
+            print_success("Removed out-of-sync virtual environment")
+        except Exception as e:
+            print_error(f"Failed to remove venv: {e}")
+            print_info("You may need to manually run: rm -rf .venv")
+            sys.exit(1)
+    else:
+        print_success("Virtual environment is in sync")
+
+
+def create_virtualenv():
+    """Create a Python virtual environment"""
+    print_step("Creating Python virtual environment")
+
+    venv_path = get_venv_path()
+
+    if venv_path.exists():
+        print_info(f"Virtual environment already exists at {venv_path}")
+        return
+
+    python_cmd = get_python_executable()
+    run_command(
+        [python_cmd, "-m", "venv", str(venv_path)],
+        error_message="Failed to create virtual environment",
+    )
+
+    print_success(f"Virtual environment created at {venv_path}")
+
+
+def upgrade_pip():
+    """Upgrade pip to the latest version"""
+    print_step("Upgrading pip, setuptools, and wheel")
+
+    pip_cmd = get_venv_pip_cmd()
+    result = run_command(
+        pip_cmd + ["install", "--upgrade", "pip", "setuptools", "wheel"],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print_warning(
+            "Could not upgrade pip/setuptools/wheel (offline environment?). Using bundled versions."
+        )
+    else:
+        print_success("Package managers upgraded")
+
+
+def install_requirements():
+    """Install Python dependencies (both production and dev)"""
+    print_step("Installing Python dependencies")
+
+    project_root = get_project_root()
+    requirements_file = project_root / "requirements.txt"
+    requirements_dev = project_root / "requirements-dev.txt"
+
+    if not requirements_file.exists():
+        print_error(f"requirements.txt not found at {requirements_file}")
+        sys.exit(1)
+
+    # Get the best available package manager (uv or pip)
+    pkg_manager, is_uv = get_package_manager()
+
+    def install_from_file(requirements_path: Path, description: str):
+        nonlocal pkg_manager, is_uv
+
+        if is_uv:
+            cmd = pkg_manager + ["install", "-r", str(requirements_path)]
+            result = run_command(cmd, check=False)
+
+            if result.returncode != 0:
+                print_warning(
+                    f"uv failed to install {description.lower()}; falling back to pip"
+                )
+                pkg_manager = get_venv_pip_cmd()
+                is_uv = False
+            else:
+                return
+
+        cmd = pkg_manager + ["install", "-r", str(requirements_path)]
+        run_command(cmd, error_message=f"Failed to install {description}")
+
+    # Install production dependencies
+    install_from_file(requirements_file, "production requirements")
+
+    # Install dev dependencies if they exist
+    if requirements_dev.exists():
+        install_from_file(requirements_dev, "dev requirements")
+        print_success("Production + dev dependencies installed")
+    else:
+        print_success("Dependencies installed successfully")
+        print_info("No requirements-dev.txt found, skipping dev tools")
+
+
+def setup_env_file():
+    """Create .env file from .env.example if it doesn't exist"""
+    print_step("Checking environment configuration")
+
+    project_root = get_project_root()
+    env_file = project_root / ".env"
+    env_example = project_root / ".env.example"
+    env_sample = project_root / ".env.sample"  # Legacy fallback
+
+    created_env = False
+
+    if env_file.exists():
+        print_info(".env file already exists")
+    else:
+        # Try .env.example first, then fallback to .env.sample
+        source_file = env_example if env_example.exists() else env_sample
+
+        if source_file.exists():
+            try:
+                import shutil
+
+                shutil.copy(source_file, env_file)
+                created_env = True
+                print_success(f".env file created from {source_file.name}")
+                print_info("Please review .env and update settings as needed")
+            except Exception as e:
+                print_error(f"Failed to copy {source_file.name}: {e}")
+        else:
+            print_info("No .env.example or .env.sample found, skipping .env creation")
+
+    ensure_field_encryption_key(env_file, created_env)
+
+
+def ensure_field_encryption_key(env_file: Path, env_created: bool) -> None:
+    """Ensure FIELD_ENCRYPTION_KEY exists and is valid"""
+    if not env_file.exists():
+        return
+
+    key_prefix = "FIELD_ENCRYPTION_KEY="
+    new_key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+
+    try:
+        lines = env_file.read_text().splitlines()
+    except Exception as e:
+        print_warning(f"Unable to read .env for encryption key: {e}")
+        return
+
+    key_index = None
+    existing_value = ""
+
+    for idx, line in enumerate(lines):
+        if line.startswith(key_prefix):
+            key_index = idx
+            existing_value = line[len(key_prefix) :].strip()
+            break
+
+    if existing_value:
+        os.environ.setdefault("FIELD_ENCRYPTION_KEY", existing_value)
+        return
+
+    if key_index is not None:
+        lines[key_index] = f"{key_prefix}{new_key}"
+    else:
+        if lines and lines[-1] != "":
+            lines.append("")
+        lines.append(f"{key_prefix}{new_key}")
+
+    try:
+        env_file.write_text("\n".join(lines) + "\n")
+        os.environ["FIELD_ENCRYPTION_KEY"] = new_key
+        if env_created:
+            print_success("Generated FIELD_ENCRYPTION_KEY for new .env")
+        else:
+            print_success("Generated FIELD_ENCRYPTION_KEY in existing .env")
+            print_info("Keep this key safe; it encrypts sensitive data")
+    except Exception as e:
+        print_error(f"Failed to write FIELD_ENCRYPTION_KEY to .env: {e}")
+
+
+def run_migrations():
+    """Run Django database migrations"""
+    print_step("Running database migrations")
+
+    python_cmd = str(get_venv_python())
+    manage_py = get_project_root() / "manage.py"
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    run_command(
+        [python_cmd, str(manage_py), "migrate"], error_message="Failed to run migrations"
+    )
+
+    print_success("Database migrations completed")
+
+
+def create_dev_admin():
+    """Create a development admin user"""
+    print_step("Creating development admin user")
+
+    python_cmd = str(get_venv_python())
+    manage_py = get_project_root() / "manage.py"
+
+    # Try to create admin user using custom management command
+    result = run_command(
+        [
+            python_cmd,
+            str(manage_py),
+            "create_dev_admin",
+            "--username",
+            "admin",
+            "--email",
+            "admin@example.com",
+            "--password",
+            "admin123",
+        ],
+        check=False,
+        capture_output=True,
+    )
+
+    if result.returncode == 0:
+        print_success("Development admin user created (admin/admin123)")
+    else:
+        print_info("Skipping dev admin creation (custom command not available)")
+
+
+def print_final_instructions():
+    """Print final instructions for the user"""
+    show_banner("You're all set. Time to build something.", style="green")
+
+    console.print("\n[cyan]Start your server:[/cyan]")
+
+    if platform.system() == "Windows":
+        console.print(f"  [bold]python bin\\dev[/bold]")
+        console.print(f"  or")
+        console.print(f"  [bold].\\bin\\dev[/bold]")
+    else:
+        console.print(f"  [bold]./bin/dev[/bold]")
+        console.print(f"  or")
+        console.print(f"  [bold]python bin/dev[/bold]")
+
+    console.print(f"\n[cyan]Other commands:[/cyan]")
+
+    if platform.system() == "Windows":
+        console.print(f"  [bold]python bin\\test[/bold]    - Run tests")
+        console.print(f"  [bold]python bin\\check[/bold]   - Quality checks")
+        console.print(f"  [bold]python bin\\ci[/bold]      - Full CI pipeline")
+        console.print(f"  [bold]python bin\\reset[/bold]   - Reset everything")
+    else:
+        console.print(f"  [bold]./bin/test[/bold]    - Run tests")
+        console.print(f"  [bold]./bin/check[/bold]   - Quality checks")
+        console.print(f"  [bold]./bin/ci[/bold]      - Full CI pipeline")
+        console.print(f"  [bold]./bin/reset[/bold]   - Reset everything")
+
+    console.print(f"\n[yellow]Admin login → http://127.0.0.1:8000/accounts/login/[/yellow]")
+    console.print(f"  Username: [bold]admin[/bold]")
+    console.print(f"  Password: [bold]admin123[/bold]")
+    console.print(
+        f"\n[cyan]Note:[/cyan] In development (DJANGO_ENV=development), you'll see a 'Force Login (Dev)' button!"
+    )
+    console.print()
+
+
+def main():
+    """Main setup function"""
+    # Punk art header
+    show_banner("BAR OS - Setup\nVenue management for people who actually work.", style="cyan")
+
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Run setup steps
+        check_venv_sync()  # Check if venv is out of sync and clean if needed
+        create_virtualenv()
+        upgrade_pip()
+        install_requirements()
+        setup_env_file()
+        run_migrations()
+        create_dev_admin()
+        # Print success message
+        print_final_instructions()
+
+    except KeyboardInterrupt:
+        print_error("\n\nSetup interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"\n\nUnexpected error during setup: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

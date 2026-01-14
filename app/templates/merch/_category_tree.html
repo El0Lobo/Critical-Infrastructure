@@ -1,0 +1,67 @@
+{% load i18n %}
+{# Recursive category + products tree #}
+
+<div class="card merch-card">
+  <div class="card-body merch-card__header">
+    <div class="merch-card__title">
+      <strong>{{ node.name }}</strong>
+      {% if node.order %}<span class="text-muted small">· Order: {{ node.order }}</span>{% endif %}
+      {% if node.parent %}<span class="badge rounded-pill bg-secondary-subtle text-light-emphasis">Child of {{ node.parent.name }}</span>{% endif %}
+    </div>
+    <div class="merch-card__actions">
+      <a class="btn btn-sm btn-outline-success" href="{% url 'merch:category_new' %}?parent={{ node.pk }}">{% trans "+ Subcategory" %}</a>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'merch:product_create' %}?category={{ node.pk }}">{% trans "+ Item here" %}</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'merch:category_edit' node.pk %}">{% trans "Edit" %}</a>
+      <form method="post" action="{% url 'merch:category_delete' node.pk %}" onsubmit="return confirm('Delete category {{ node.name }}?');">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-danger" type="submit">{% trans "Delete" %}</button>
+      </form>
+    </div>
+  </div>
+
+  {% if node.products.all %}
+    <div class="merch-product-list">
+      {% for p in node.products.all %}
+        <div class="merch-product-row">
+          <div class="merch-product-info">
+            {% if p.primary_image %}
+              <img class="merch-product-thumb" src="{{ p.primary_image.image.url }}" alt="{{ p.primary_image.alt_text }}">
+            {% endif %}
+            <div class="merch-product-copy">
+              <div class="merch-product-name">
+                <span>{{ p.name }}</span>
+                {% if not p.visible_public %}<span class="badge bg-warning text-dark">{% trans "Hidden" %}</span>{% endif %}
+                {% if p.featured %}<span class="badge bg-info text-dark">{% trans "Featured" %}</span>{% endif %}
+              </div>
+              {% if p.description %}<div class="text-muted small">{{ p.description }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="merch-product-price">
+            {% if p.base_price %}
+              {{ p.base_price|floatformat:2 }} {{ currency }}
+            {% else %}
+              {% with m=p.min_variant_price %}{% if m %}from {{ m|floatformat:2 }} {{ currency }}{% endif %}{% endwith %}
+            {% endif %}
+          </div>
+          <div class="merch-product-actions">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'merch:product_edit' p.slug %}">{% trans "Edit" %}</a>
+            <form method="post"
+                  action="{% url 'merch:product_delete' p.slug %}"
+                  onsubmit="return confirm('Delete {{ p.name }}?');">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-danger" type="submit">{% trans "Delete" %}</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if node.children.all %}
+    <div class="merch-children">
+      {% for child in node.children.all %}
+        {% include "merch/_category_tree.html" with node=child currency=currency %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

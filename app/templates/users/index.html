@@ -1,0 +1,374 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% load setup_tags %}
+
+{% block title %}Users — CMS{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Buttons */
+  #users-page button.btn-edit{ background-color:#6870eb; color:#fff; }
+  #users-page button.btn-edit:hover{ background-color:#6871eb7e; scale:1.05; color:#fff; }
+  #users-page button.btn-delete{ background-color:#9b1116ff; color:#fff; }
+  #users-page button.btn-delete:hover{ background-color:#9b111690; scale:1.05; color:#fff; }
+  #users-page a.btn-impersonate{ background:#333; color:#fff; border:1px solid transparent; padding:.25rem .5rem; border-radius:6px; display:inline-flex; align-items:center; gap:.35rem; }
+  #users-page a.btn-impersonate:hover{ background:#000; scale:1.05; }
+
+  /* Cards */
+  #users-page .card{ padding:12px; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+
+  /* Cogs positioning context */
+  #users-page .nav-inline { position: relative; display:inline-flex; align-items:center; gap:.35rem; }
+  .header-actions { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="users-page">
+
+  <!-- HEADER -->
+  <div class="nav-inline" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h1 class="mb-2" style="margin:0;">{% trans "Users" %}</h1>
+
+    <div class="header-actions">
+      <!-- Group Hierarchy -->
+      <div class="nav-inline">
+        {% if request.user|allow_for:"cms.users.group_hierarchy" %}
+          <a href="{% url 'users:group_hierarchy' %}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Manage the order and priority of groups' %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align:-2px; margin-right:.35rem;">
+              <path d="M8 6h13M8 12h13M8 18h13"></path>
+              <path d="M3 6h.01M3 12h.01M3 18h.01"></path>
+            </svg>
+            Group Hierarchy
+          </a>
+        {% endif %}
+        {% if request.real_user and request.real_user.is_superuser %}
+          {% visibility_cog_inline "cms.users.group_hierarchy" "Show/hide Group Hierarchy button" %}
+        {% endif %}
+      </div>
+
+      <!-- Manage badges -->
+      <div class="nav-inline">
+        {% if request.user|allow_for:"cms.users.manage_badges" %}
+          <a href="{% url 'users:badges_list' %}" class="btn btn-outline-secondary">{% trans "Manage badges" %}</a>
+        {% endif %}
+        {% if request.real_user and request.real_user.is_superuser %}
+          {% visibility_cog_inline "cms.users.manage_badges" "Show/hide Manage Badges button" %}
+        {% endif %}
+      </div>
+
+      <div class="nav-inline">
+        {% if request.user.is_staff or request.user.is_superuser %}
+          <a href="{% url 'users:membership_settings' %}" class="btn btn-outline-secondary">{% trans "Membership settings" %}</a>
+          <a href="{% url 'users:roles_settings' %}" class="btn btn-outline-secondary">{% trans "Roles & groups" %}</a>
+        {% endif %}
+      </div>
+
+      <!-- Add user -->
+      <div class="nav-inline">
+        {% if request.user|allow_for:"cms.users.add_user" %}
+          <a class="btn btn-sm btn-filled btn-scheme-blue btn-new" href="{% url 'users:create' %}">{% trans "+ Add New User" %}</a>
+        {% endif %}
+        {% if request.real_user and request.real_user.is_superuser %}
+          {% visibility_cog_inline "cms.users.add_user" "Show/hide Add User button" %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ---- GROUPED USERS (by Group) ---- #}
+  {% for group, users in grouped %}
+    {% with gid=group.id|stringformat:"s" %}
+      {% with group_key="cms.users.group."|add:gid %}
+        {% if request.user|allow_for:group_key %}
+          <div class="nav-inline" style="gap:.5rem;">
+            <h2 class="mt-3" style="margin:10px 0 6px 0;">{{ group.name }}</h2>
+            {% if request.real_user and request.real_user.is_superuser %}
+              {% visibility_cog_inline group_key "Show/hide this group section" %}
+            {% endif %}
+          </div>
+
+          <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+            {% for u in users %}
+              {% with p=u.profile %}
+              <div class="card" id="user-card-{{ u.id }}">
+                <div style="display:flex; gap:.75rem; align-items:flex-start;">
+                  <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;gap:.5rem;">
+                      <strong>{{ p.chosen_name|default:p.legal_name|default:u.username }}</strong>
+                    </div>
+                    <div style="font-size:.9rem;">
+                      {% if p.role_title %}{{ p.role_title }}{% else %}—{% endif %}
+                      {% if p.primary_group %}{% if p.role_title %} · {% endif %}{{ p.primary_group.name }}{% endif %}
+                    </div>
+                  </div>
+
+                  {# Impersonate button (no parentheses; hide for self; only when not impersonating) #}
+                  {% if not request.impersonating %}
+                    {% if u.id != request.user.id %}
+                      {% if request.user.is_superuser or perms.users.can_impersonate %}
+                        <div class="nav-inline" style="margin-left:.5rem;">
+                          <a class="btn-impersonate"
+                             href="{% url 'users:impersonate' u.id %}?next={{ request.get_full_path|urlencode }}"
+                             title="View the CMS as {{ u.username }}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            View as
+                          </a>
+                        </div>
+                      {% endif %}
+                    {% endif %}
+                  {% endif %}
+                </div>
+
+                {% if p.duties %}
+                  <div class="desc-preview" style="margin-top:.5rem;font-size:.9rem;max-height:3.2em;overflow:hidden;">
+                    {{ p.duties }}
+                  </div>
+                {% endif %}
+
+                {# ---- IDENTITY BOX ---- #}
+                {% if request.user|allow_for:"cms.users.identity" %}
+                  <div style="margin-top:.6rem;">
+                    <div class="nav-inline" style="border:1px solid #e6e6e6;border-radius:8px;padding:.55rem .7rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+                      <div style="font-size:.9rem;">
+                        {% if p.legal_name %}<div><strong>{% trans "Legal:" %}</strong> {{ p.legal_name }}</div>{% endif %}
+                        {% if p.chosen_name %}<div><strong>{% trans "Chosen:" %}</strong> {{ p.chosen_name }}</div>{% endif %}
+                        {% if p.pronouns %}<div><strong>{% trans "Pronouns:" %}</strong> {{ p.pronouns }}</div>{% endif %}
+                        {% if p.birth_date %}
+                          <div>
+                            <strong>{% trans "Birthday:" %}</strong> {{ p.birth_date|date:"d-m-Y" }}
+                            {% if p.age_years %} ({{ p.age_years }}y){% endif %}
+                          </div>
+                        {% endif %}
+                        {% if not p.legal_name and not p.chosen_name and not p.pronouns and not p.birth_date %}
+                          <em class="text-muted">{% trans "No identity details" %}</em>
+                        {% endif %}
+                      </div>
+                      {% if request.real_user and request.real_user.is_superuser %}
+                        {% visibility_cog_inline "cms.users.identity" "Identity box" %}
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                {# ---- CONTACT BOX ---- #}
+                {% if request.user|allow_for:"cms.users.contact" %}
+                  <div style="margin-top:.6rem;">
+                    <div class="nav-inline" style="border:1px solid #e6e6e6;border-radius:8px;padding:.55rem .7rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+                      <div style="font-size:.92rem;display:flex;flex-direction:column;gap:.35rem;">
+                        {% if p.email %}
+                        <span><img src="{% static 'icons/email.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.email }}</span>
+                        {% endif %}
+                        {% if p.phone %}
+                        <span><img src="{% static 'icons/phone.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.phone }}</span>
+                        {% endif %}
+                        {% if p.address %}
+                        <span><img src="{% static 'icons/home.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.address }}</span>
+                        {% endif %}
+                        {% if not p.email and not p.phone and not p.address %}<em class="text-muted">{% trans "No contact info" %}</em>{% endif %}
+                      </div>
+                      {% if request.real_user and request.real_user.is_superuser %}
+                        {% visibility_cog_inline "cms.users.contact" "Contact box" %}
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                {# ---- BADGES BOX ---- #}
+                {% if request.user|allow_for:"cms.users.badges" %}
+                  <div style="margin-top:.6rem;">
+                    <div class="nav-inline" style="border:1px solid #e6e6e6;border-radius:8px;padding:.55rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+                      <div style="font-size:.92rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+                        {% for bdef in p.badges.all %}
+                          <span class="badge" style="border:1px solid #ddd;padding:.15rem .4rem;border-radius:.5rem;cursor:default;" title="{{ bdef.description|default:bdef.name }}">{{ bdef.emoji }} {{ bdef.name }}</span>
+                        {% empty %}
+                          <em class="text-muted">{% trans "No badges" %}</em>
+                        {% endfor %}
+                      </div>
+                      {% if request.real_user and request.real_user.is_superuser %}
+                        {% visibility_cog_inline "cms.users.badges" "Badges box" %}
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                {# ---- META BOX ---- #}
+                {% if request.user|allow_for:"cms.users.meta" %}
+                  <div style="margin-top:.6rem;">
+                    <div class="nav-inline" style="border:1px solid #e6e6e6;border-radius:8px;padding:.55rem .7rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+                      <div style="font-size:.85rem;">
+                        {% if u.date_joined %}<div><strong>{% trans "Joined:" %}</strong> {{ u.date_joined|date:"d-m-Y" }}</div>{% endif %}
+                        {% if u.last_login %}<div><strong>{% trans "Last login:" %}</strong> {{ u.last_login|date:"Y-m-d H:i" }}</div>{% endif %}
+                        {% if not u.date_joined and not u.last_login %}<em class="text-muted">—</em>{% endif %}
+                      </div>
+                      {% if request.real_user and request.real_user.is_superuser %}
+                        {% visibility_cog_inline "cms.users.meta" "Meta box" %}
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <div style="display:flex; gap:.5rem; margin-top:.75rem; justify-content:flex-end;">
+                  <!-- Edit -->
+                  <div class="nav-inline">
+                    {% if request.user|allow_for:"cms.users.edit_button" %}
+                      <button type="button" class="btn btn-sm btn-edit" onclick="window.location.href='{% url 'users:profile_edit' u.id %}'">{% trans "Edit" %}</button>
+                    {% endif %}
+                    {% if request.real_user and request.real_user.is_superuser %}
+                      {% visibility_cog_inline "cms.users.edit_button" "Show/hide Edit button" %}
+                    {% endif %}
+                  </div>
+
+                  <!-- Delete -->
+                  <div class="nav-inline">
+                    {% if request.user|allow_for:"cms.users.delete_button" %}
+                      <form action="{% url 'users:delete' u.id %}" method="post" onsubmit="return confirm('Delete {{ u.username }}? This cannot be undone.');" style="display:inline;">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline btn-scheme-red btn-delete" type="submit">{% trans "Delete" %}</button>
+                      </form>
+                    {% endif %}
+                    {% if request.real_user and request.real_user.is_superuser %}
+                      {% visibility_cog_inline "cms.users.delete_button" "Show/hide Delete button" %}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endwith %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+    {% endwith %}
+  {% endfor %}
+
+  {# ---- USERS WITHOUT GROUP ---- #}
+  {% with no_group_key="cms.users.group.none" %}
+    {% if no_group_users and request.user|allow_for:no_group_key %}
+      <div class="nav-inline" style="gap:.5rem;">
+        <h2 class="mt-3" style="margin:14px 0 6px 0;">{% trans "No group" %}</h2>
+        {% if request.real_user and request.real_user.is_superuser %}
+          {% visibility_cog_inline no_group_key "Show/hide this 'No group' section" %}
+        {% endif %}
+      </div>
+
+      <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+        {% for u in no_group_users %}
+          {% with p=u.profile %}
+          <div class="card" id="user-card-ng-{{ u.id }}">
+            <div style="display:flex; gap:.75rem; align-items:flex-start;">
+              <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;gap:.5rem;">
+                  <strong>{{ p.chosen_name|default:p.legal_name|default:u.username }}</strong>
+                </div>
+                <div style="font-size:.9rem;">{{ p.role_title|default:"—" }}</div>
+              </div>
+
+              {% if not request.impersonating %}
+                {% if u.id != request.user.id %}
+                  {% if request.user.is_superuser or perms.users.can_impersonate %}
+                    <div class="nav-inline" style="margin-left:.5rem;">
+                      <a class="btn-impersonate" href="{% url 'users:impersonate' u.id %}?next={{ request.get_full_path|urlencode }}" title="View the CMS as {{ u.username }}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        View as
+                      </a>
+                    </div>
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            </div>
+
+            {% if p.duties %}
+              <div class="desc-preview" style="margin-top:.5rem;font-size:.9rem;color:#555;max-height:3.2em;overflow:hidden;">
+                {{ p.duties }}
+              </div>
+            {% endif %}
+
+            {% if request.user|allow_for:"cms.users.contact" %}
+              <div style="margin-top:.6rem;">
+                <div class="nav-inline" style="border:1px solid #e6e6e6;border-radius:8px;padding:.55rem .7rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+                  <div style="font-size:.92rem;display:flex;flex-direction:column;gap:.35rem;">
+                    {% if p.email %}<span><img src="{% static 'icons/email.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.email }}</span>{% endif %}
+                    {% if p.phone %}<span><img src="{% static 'icons/phone.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.phone }}</span>{% endif %}
+                    {% if p.address %}<span><img src="{% static 'icons/home.svg' %}" alt="" width="16" height="16" style="vertical-align:-3px;margin-right:.35rem;filter:invert(1) brightness(2);">{{ p.address }}</span>{% endif %}
+                    {% if not p.email and not p.phone and not p.address %}<em class="text-muted">{% trans "No contact info" %}</em>{% endif %}
+                  </div>
+                  {% if request.real_user and request.real_user.is_superuser %}
+                    {% visibility_cog_inline "cms.users.contact" "Contact box" %}
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+
+            <div style="display:flex; gap:.5rem; margin-top:.75rem; justify-content:flex-end;">
+              <!-- Edit -->
+              <div class="nav-inline">
+                {% if request.user|allow_for:"cms.users.edit_button" %}
+                  <button type="button" class="btn btn-sm btn-edit" onclick="window.location.href='{% url 'users:profile_edit' u.id %}'">{% trans "Edit" %}</button>
+                {% endif %}
+                {% if request.real_user and request.real_user.is_superuser %}
+                  {% visibility_cog_inline "cms.users.edit_button" "Show/hide Edit button" %}
+                {% endif %}
+              </div>
+
+              <!-- Delete -->
+              <div class="nav-inline">
+                {% if request.user|allow_for:"cms.users.delete_button" %}
+                  <form action="{% url 'users:delete' u.id %}" method="post" onsubmit="return confirm('Delete {{ u.username }}? This cannot be undone.');" style="display:inline;">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline btn-scheme-red btn-delete" type="submit">{% trans "Delete" %}</button>
+                  </form>
+                {% endif %}
+                {% if request.real_user and request.real_user.is_superuser %}
+                  {% visibility_cog_inline "cms.users.delete_button" "Show/hide Delete button" %}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+/* Make cogs reliably focusable + mark last clicked (helps popover anchor) */
+document.addEventListener('click', function (ev) {
+  const cog = ev.target.closest('.cfg-cog');
+  if (!cog) return;
+  if (!cog.hasAttribute('tabindex')) cog.setAttribute('tabindex', '0');
+  cog.focus({preventScroll: true});
+  document.querySelectorAll('.cfg-cog[data-last-cog]').forEach(el => el.removeAttribute('data-last-cog'));
+  cog.setAttribute('data-last-cog', '1');
+});
+</script>
+<style>
+  /* Buttons */
+  #users-page button.btn-edit{ background-color:#6870eb; color:#fff; }
+  #users-page button.btn-edit:hover{ background-color:#6871eb7e; scale:1.05; color:#fff; }
+  #users-page button.btn-delete{ background-color:#9b1116ff; color:#fff; }
+  #users-page button.btn-delete:hover{ background-color:#9b111690; scale:1.05; color:#fff; }
+
+  /* Cards */
+  #users-page .card{ padding:12px; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+
+  /* Cogs positioning context */
+  #users-page .nav-inline { position: relative; display:inline-flex; align-items:center; gap:.35rem; }
+
+  .btn:hover {
+    display:inline-block;
+    padding:0.5rem 0.8rem;
+    border:1px solid var(--line);
+    border-radius:8px;
+    scale:1.05;
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "public/base_public.html" %}
+{% load static i18n %}
+{% block title %}Contact {{ site_settings.org_name }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h2>{% trans "Contact" %}</h2>
+    <p>
+      {% if site_settings.contact_email %}
+        <span class="icon"><img src="{% static 'icons/email.svg' %}" alt=""></span>
+        Email: <a href="mailto:{{ site_settings.contact_email }}">{{ site_settings.contact_email }}</a><br>
+      {% endif %}
+
+      {% if site_settings.contact_phone %}
+        <span class="icon"><img src="{% static 'icons/phone.svg' %}" alt=""></span>
+        {# strip spaces, dashes, parentheses for tel: #}
+        Phone: <a href="tel:{{ site_settings.contact_phone|cut:' '|cut:'-'|cut:'('|cut:')' }}">{{ site_settings.contact_phone }}</a><br>
+      {% endif %}
+
+      {% if site_settings.website_url %}
+        <span class="icon"><img src="{% static 'icons/globe.svg' %}" alt=""></span>
+        Website: <a href="{{ site_settings.website_url }}">{{ site_settings.website_url }}</a>
+      {% endif %}
+    </p>
+
+    <div class="socials-inline">
+      {% if site_settings.social_facebook %}
+        <a href="{{ site_settings.social_facebook }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/facebook.svg' %}" alt=""></span><span>{% trans "Facebook" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_instagram %}
+        <a href="{{ site_settings.social_instagram }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/instagram.svg' %}" alt=""></span><span>{% trans "Instagram" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_twitter %}
+        <a href="{{ site_settings.social_twitter }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/twitter.svg' %}" alt=""></span><span>{% trans "Twitter" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_tiktok %}
+        <a href="{{ site_settings.social_tiktok }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/tiktok.svg' %}" alt=""></span><span>{% trans "TikTok" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_youtube %}
+        <a href="{{ site_settings.social_youtube }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/youtube.svg' %}" alt=""></span><span>{% trans "YouTube" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_spotify %}
+        <a href="{{ site_settings.social_spotify }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/spotify.svg' %}" alt=""></span><span>{% trans "Spotify" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_soundcloud %}
+        <a href="{{ site_settings.social_soundcloud }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/soundcloud.svg' %}" alt=""></span><span>{% trans "SoundCloud" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_bandcamp %}
+        <a href="{{ site_settings.social_bandcamp }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/bandcamp.svg' %}" alt=""></span><span>{% trans "Bandcamp" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_linkedin %}
+        <a href="{{ site_settings.social_linkedin }}" target="_blank" rel="noopener" class="social">
+          <span class="icon"><img src="{% static 'icons/linkedin.svg' %}" alt=""></span><span>{% trans "LinkedIn" %}</span>
+        </a>
+      {% endif %}
+      {% if site_settings.social_mastodon %}
+        <a href="{{ site_settings.social_mastodon }}" rel="me noopener" target="_blank" class="social">
+          <span class="icon"><img src="{% static 'icons/mastodon.svg' %}" alt=""></span><span>{% trans "Mastodon" %}</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{% trans "Address" %}</h2>
+    {% if site_address_has_any %}
+      {% include "public/includes/address.html" %}
+    {% else %}
+      <p class="muted">{% trans "No address configured yet." %}</p>
+    {% endif %}
+
+    {% if site_settings.geo_lat and site_settings.geo_lng %}
+      <div style="margin-top:.5rem">
+        <a href="https://maps.google.com/?q={{ site_settings.geo_lat }},{{ site_settings.geo_lng }}" target="_blank" rel="noopener">
+          View on map
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+/* tiny styles; move to your CSS if you want */
+.icon { width: 1.1rem; height: 1.1rem; display: inline-flex; vertical-align: -0.2rem; margin-right: .35rem; }
+.icon img { width: 100%; height: 100%; display: block; }
+.socials-inline { display: flex; flex-wrap: wrap; gap: .25rem .5rem; margin-top: .5rem; }
+.socials-inline a { display: inline-flex; align-items: center; text-decoration: none; }
+.socials-inline a + a::before {margin-right: .5rem; }
+</style>
+{% endblock %}

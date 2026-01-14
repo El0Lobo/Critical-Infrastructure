@@ -1,0 +1,13 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}Maps · {% if mode == 'create' %}Create{% else %}Edit{% endif %}{% endblock %}
+{% block content %}
+  <h1>Maps — {% if mode == 'create' %}Create{% else %}Edit{% endif %}</h1>
+  <form class="form">
+    <!-- Replace with real Django forms later -->
+    <label>{% trans "Title" %}</label><input placeholder="{% trans 'Title' %}" value="{{ item.title|default:'' }}">
+    <label>{% trans "Slug" %}</label><input placeholder="{% trans 'slug' %}" value="{{ item.slug|default:'' }}">
+    <label>{% trans "Notes" %}</label><textarea rows="4" placeholder="{% trans 'Notes' %}">{{ item.notes|default:'' }}</textarea>
+    <div style="margin-top:1rem;"><a class="btn" href="javascript:alert('Submit not wired yet')">{% trans "Save" %}</a> <a class="btn" href="/cms/maps/">{% trans "Cancel" %}</a></div>
+  </form>
+{% endblock %}

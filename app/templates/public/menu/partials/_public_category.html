@@ -1,0 +1,70 @@
+{% load menu_extras %}
+
+{% with children=category.children.all %}
+  {% if children|length %}
+    <ul class="list-unstyled ms-3">
+      {% for child in children %}
+        <li class="mb-2">
+          <strong>{{ child.name }}</strong>
+          {% include "public/menu/partials/_public_category.html" with category=child only %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+{% with items=category.items.all %}
+  {% if items|length %}
+    <ul class="list-unstyled ms-3">
+      {% for item in items %}
+        {% if item.visible_public %}
+          <li class="mb-3">
+            <div>
+              <strong>{{ item.name }}</strong>{% if item.description %} — {{ item.description }}{% endif %}
+            </div>
+
+            {% with variants=item.variants.all %}
+              {% with count=variants|length %}
+                {% if count %}
+                  <div class="small text-muted">
+                    {% if count == 1 %}
+                      {% with v=variants.0 %}
+                        {% variant_amount item v as amt %}
+                        {% if amt %}<span>{{ amt }}</span>{% endif %}
+                        {% if v.price or v.price_display %}{% if amt %} · {% endif %}{% endif %}
+                        {% if v.price_display %}
+                          {{ v.price_display }}
+                        {% elif v.price %}
+                          {% money v.price position="after" %}
+                        {% endif %}
+                      {% endwith %}
+                    {% else %}
+                      {% for v in variants %}
+                        <div>
+                          {% with lbl=v|variant_label %}
+                            {% variant_amount item v as amt %}
+                            {% if lbl %}
+                              <span>{{ lbl }}{% if amt %} ({{ amt }}){% endif %}</span>
+                            {% elif amt %}
+                              <span>{{ amt }}</span>
+                            {% endif %}
+                          {% endwith %}
+                          {% if v.price or v.price_display %} · {% endif %}
+                          {% if v.price_display %}
+                            {{ v.price_display }}
+                          {% elif v.price %}
+                            {% money v.price position="after" %}
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}

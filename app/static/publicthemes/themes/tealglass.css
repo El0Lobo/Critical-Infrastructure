@@ -1,0 +1,1 @@
+:root{--bg:#0e171a;--fg:#e9f1f2;--brand:#25d0c2;--border:#1d2b30;--card:rgba(255,255,255,.06);} body{background:linear-gradient(180deg,#091014,#0e171a);color:var(--fg);} main{padding:2rem;} a{color:var(--brand);}

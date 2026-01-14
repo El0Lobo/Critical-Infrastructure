@@ -1,0 +1,92 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<div class="stack">
+  <header class="page-header">
+    <h1>{% trans "Membership" %}</h1>
+    <p class="text-muted mb-0">{% trans "Enable membership features and manage available tiers." %}</p>
+  </header>
+  <section class="card">
+    <div class="card__body stack">
+      <form method="post" class="stack">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="field control-inline">
+          {{ form.membership_enabled.label_tag }}
+          {{ form.membership_enabled }}
+          {{ form.membership_enabled.errors }}
+        </div>
+        {% if form.membership_hint %}
+          <div class="field">
+            {{ form.membership_hint.label_tag }}
+            {{ form.membership_hint }}
+            {{ form.membership_hint.errors }}
+          </div>
+        {% endif %}
+        <div class="stack">
+          <h3 class="mb-0">{% trans "Tiers" %}</h3>
+          {{ tiers.management_form }}
+          {{ tiers.non_form_errors }}
+          <table class="table">
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Months" %}</th>
+              <th>{% trans "Price (minor)" %}</th>
+              <th>{% trans "Active" %}</th>
+              <th>{% trans "Actions" %}</th>
+            </tr>
+            {% for tf in tiers %}
+              <tr class="tier-form">
+                {{ tf.id }}
+                <td>{{ tf.name }}</td>
+                <td>{{ tf.months }}</td>
+                <td>{{ tf.price_minor }}</td>
+                <td>{{ tf.active }}</td>
+                <td>
+                  <span style="display:none;">{{ tf.DELETE }}</span>
+                  <button type="button" class="btn btn-danger" onclick="markFormRowDeleted(this)">{% trans "Delete" %}</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </table>
+          <button type="button" class="btn btn-secondary" id="add-tier">+ {% trans "Add Tier" %}</button>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+          <a class="btn btn-outline-secondary" href="{% url 'users:index' %}">{% trans "Back to users" %}</a>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  <script>
+    (function () {
+      window.markFormRowDeleted = function (button) {
+        const row = button.closest("tr");
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+          deleteInput.checked = true;
+        }
+        row.style.display = "none";
+      };
+      const addBtn = document.getElementById("add-tier");
+      if (!addBtn) return;
+      addBtn.addEventListener("click", function () {
+        const form = addBtn.closest("form");
+        const table = form.querySelector("table");
+        const totalInput = form.querySelector('input[name="{{ tiers.prefix }}-TOTAL_FORMS"]');
+        const total = parseInt(totalInput.value, 10);
+        const emptyTemplate = `{{ tiers.empty_form.as_table|escapejs }}`;
+        const wrapper = document.createElement("tbody");
+        wrapper.innerHTML = emptyTemplate.replace(/__prefix__/g, total);
+        const newRow = wrapper.querySelector("tr") || wrapper;
+        table.appendChild(newRow);
+        totalInput.value = total + 1;
+      });
+    })();
+  </script>
+{% endblock %}

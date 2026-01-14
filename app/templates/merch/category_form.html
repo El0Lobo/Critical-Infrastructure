@@ -1,0 +1,24 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% if category %}Edit Category{% else %}New Category{% endif %}</h1>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-md-6">
+      {{ form.name.label_tag }} {{ form.name }} {{ form.name.errors }}
+    </div>
+    <div class="col-md-6">
+      {{ form.parent.label_tag }} {{ form.parent }} {{ form.parent.errors }}
+    </div>
+    <div class="col-md-3">
+      {{ form.order.label_tag }} {{ form.order }} {{ form.order.errors }}
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn btn-secondary" href="{% url 'merch:manage' %}">{% trans "Cancel" %}</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

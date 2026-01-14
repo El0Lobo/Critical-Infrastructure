@@ -1,0 +1,29 @@
+{% load getitem i18n %}
+{% if node %}
+  <div class="inventory-card">
+    <div class="card-header">
+      <strong>{{ node.name }}</strong>
+      <div class="inventory-category-actions">
+        <a class="btn btn-sm btn-outline-success" href="{% url 'inventory:inventory_category_new' %}?parent={{ node.slug }}">{% trans "+ Subcategory" %}</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'inventory:inventory_item_new' %}?category={{ node.id }}">{% trans "+ Item" %}</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:inventory_category_edit' node.slug %}">{% trans "Edit" %}</a>
+      </div>
+    </div>
+    {% with items=category_items|get_item:node.id %}
+      {% if items %}
+        <div class="card-body inventory-list">
+          {% for item in items %}
+            {% include "inventory/_item_row.html" with item=item currency=currency %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% if node.children.all %}
+      <div class="inventory-children">
+        {% for child in node.children.all %}
+          {% include "inventory/_category_tree.html" with node=child currency=currency category_items=category_items %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endif %}

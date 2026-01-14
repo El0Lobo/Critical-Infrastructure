@@ -1,0 +1,1 @@
+:root{--bg:#0b0e14;--fg:#e6edf3;--brand:#5cc8ff;--border:#1e2430;--card:#111826;} body{background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,sans-serif;} main{padding:2rem;} a{color:var(--brand);}

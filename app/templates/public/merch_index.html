@@ -1,0 +1,23 @@
+{% load i18n %}
+
+{# app/templates/public/merch_index.html #}
+{% extends "public/base_public.html" %}
+{% block title %}Shop — {{ site_settings.org_name }}{% endblock %}
+
+{% block content %}
+<h1>{% trans "Shop" %}</h1>
+
+<div class="mb-3">
+  {% for c in categories %}
+    <a class="btn btn-outline-secondary btn-sm me-1 mb-1" href="{% url 'merch:shop_category' c.slug %}">{{ c.name }}</a>
+  {% endfor %}
+</div>
+
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+  {% for p in products %}
+    <div class="col">{% include "merch/_product_card.html" with product=p %}</div>
+  {% empty %}
+    <div class="col-12"><div class="alert alert-info">{% trans "No products yet." %}</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

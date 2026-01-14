@@ -1,0 +1,30 @@
+{% load i18n %}
+{# app/templates/merch/_category_form.html #}
+<form
+  id="quick-category-form"
+  method="post"
+  hx-post="{% url 'merch:category_new' %}"
+  hx-target="#quick-category-form"
+  hx-swap="outerHTML"
+>
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label">{% trans "Name" %}</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{% trans "Parent (optional)" %}</label>
+    {{ form.parent }}
+    {{ form.parent.errors }}
+  </div>
+  <div class="mb-3">
+    <label class="form-label">{% trans "Order" %}</label>
+    {{ form.order }}
+    {{ form.order.errors }}
+  </div>
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+    <button class="btn btn-primary">{% trans "Create" %}</button>
+  </div>
+</form>

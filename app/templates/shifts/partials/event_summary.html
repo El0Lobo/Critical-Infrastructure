@@ -1,0 +1,94 @@
+{% load i18n %}
+<div class="event-summary">
+  <dl class="kv">
+    <dt>{% trans "Status" %}</dt><dd>{{ event.get_status_display }}</dd>
+    <dt>{% trans "Type" %}</dt><dd>{{ event.get_event_type_display }}</dd>
+    <dt>{% trans "Recurrence" %}</dt>
+    <dd>
+      {% if event.is_recurring %}
+        {{ event.recurrence_description }}
+        {% if event.recurrence_next_start_at %}
+          <div class="quiet">Next: {{ event.recurrence_next_start_at|date:"D d.m.Y H:i" }}</div>
+        {% endif %}
+      {% elif event.recurrence_next_start_at %}
+        Next scheduled: {{ event.recurrence_next_start_at|date:"D d.m.Y H:i" }}
+      {% else %}
+        Does not repeat
+      {% endif %}
+    </dd>
+    <dt>{% trans "Doors" %}</dt><dd>{% if event.doors_at %}{{ event.doors_at|date:"D d.m.Y H:i" }}{% else %}&mdash;{% endif %}</dd>
+    <dt>{% trans "Starts" %}</dt>
+    <dd>
+      {% if event.starts_at %}
+        {{ event.starts_at|date:"D d.m.Y H:i" }}
+      {% elif event.recurrence_next_start_at %}
+        {{ event.recurrence_next_start_at|date:"D d.m.Y H:i" }}
+      {% else %}
+        &mdash;
+      {% endif %}
+    </dd>
+    <dt>{% trans "Ends" %}</dt><dd>{% if event.ends_at %}{{ event.ends_at|date:"D d.m.Y H:i" }}{% else %}&mdash;{% endif %}</dd>
+    <dt>{% trans "Curfew" %}</dt><dd>{% if event.curfew_at %}{{ event.curfew_at|date:"D d.m.Y H:i" }}{% else %}&mdash;{% endif %}</dd>
+    <dt>{% trans "Location" %}</dt>
+    <dd>
+      {% if event.venue_name %}<strong>{{ event.venue_name }}</strong>{% endif %}
+      {% if event.venue_address %}<div>{{ event.venue_address }}{% if event.venue_postal_code %}, {{ event.venue_postal_code }}{% endif %}{% if event.venue_city %} {{ event.venue_city }}{% endif %}</div>{% endif %}
+      {% if event.venue_country %}<div>{{ event.venue_country }}</div>{% endif %}
+    </dd>
+    <dt>{% trans "Categories" %}</dt>
+    <dd>
+      {% for cat in event.categories.all %}
+        <span class="pill">{{ cat.name }}</span>
+      {% empty %}
+        <span class="quiet">{% trans "None" %}</span>
+      {% endfor %}
+    </dd>
+  </dl>
+
+  <section class="event-summary-section">
+    <h3>{% trans "Ticketing" %}</h3>
+    {% if event.is_free %}
+      <p class="quiet">{% trans "Free entry" %}</p>
+    {% else %}
+      <p>
+        {% if event.ticket_price_from %}
+          {{ event.ticket_price_from }}{% if event.ticket_price_to %}-{{ event.ticket_price_to }}{% endif %}
+        {% else %}
+          &mdash;
+        {% endif %}
+      </p>
+    {% endif %}
+    {% if event.ticket_url %}
+      <p><a href="{{ event.ticket_url }}" target="_blank" rel="noopener">{% trans "Ticket link" %}</a></p>
+    {% endif %}
+  </section>
+
+  <section class="event-summary-section">
+    <h3>{% trans "Performers" %}</h3>
+    <ul class="performer-list">
+      {% for performer in event.performers.all %}
+        <li>
+          <strong>{{ performer.display_name }}</strong>
+          {% if performer.slot_starts_at %}<span class="quiet">{{ performer.slot_starts_at|date:"H:i" }}{% if performer.slot_ends_at %}-{{ performer.slot_ends_at|date:"H:i" }}{% endif %}</span>{% endif %}
+          {% if performer.notes %}<div class="quiet">{{ performer.notes }}</div>{% endif %}
+        </li>
+      {% empty %}
+        <li class="quiet">{% trans "No performers listed." %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if event.description_public %}
+    <section class="event-summary-section">
+      <h3>{% trans "Public notes" %}</h3>
+      <div class="prose">{{ event.description_public|linebreaks }}</div>
+    </section>
+  {% endif %}
+
+  {% if event.description_internal %}
+    <section class="event-summary-section">
+      <h3>{% trans "Internal notes" %}</h3>
+      <div class="prose">{{ event.description_internal|linebreaks }}</div>
+    </section>
+  {% endif %}
+</div>

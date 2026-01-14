@@ -1,0 +1,1 @@
+:root{--bg:#ffffff;--fg:#111;--brand:#0aa;--border:#ddd;--card:#fff;} body{background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,sans-serif;} main{padding:2rem;} a{color:var(--brand);}

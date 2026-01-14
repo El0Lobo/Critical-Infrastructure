@@ -1,0 +1,15 @@
+{% extends 'pages/base.html' %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Menu" %}</h1>
+
+{% if drinks_root %}
+  <h2>{% trans "Drinks" %}</h2>
+  {% include 'public/menu/_tree.html' with node=drinks_root %}
+{% endif %}
+
+{% if food_root %}
+  <h2>{% trans "Food" %}</h2>
+  {% include 'public/menu/_tree.html' with node=food_root %}
+{% endif %}
+{% endblock %}

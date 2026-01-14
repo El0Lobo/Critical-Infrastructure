@@ -1,0 +1,28 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h1 style="margin:0;">{% trans "Badges" %}</h1>
+    <div>
+      <a class="btn btn-primary" href="{% url 'users:badges_create' %}">{% trans "+ New Badge" %}</a>
+      <a class="btn btn-light" href="{% url 'users:index' %}">{% trans "Back to users" %}</a>
+    </div>
+  </div>
+
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px;">
+    {% for b in badges %}
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>{{ b.emoji }} {{ b.name }}</strong>
+          <div style="display:flex;gap:.4rem;">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'users:badges_edit' b.pk %}">{% trans "Edit" %}</a>
+            <a class="btn btn-sm btn-outline-danger" href="{% url 'users:badges_delete' b.pk %}">{% trans "Delete" %}</a>
+          </div>
+        </div>
+        <div class="text-muted" style="margin-top:.35rem;">{{ b.description|default:"—" }}</div>
+      </div>
+    {% empty %}
+      <div class="text-muted">{% trans "No badges yet." %}</div>
+    {% endfor %}
+  </div>
+{% endblock %}

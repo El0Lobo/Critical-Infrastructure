@@ -1,0 +1,44 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+
+{% block title %}Edit Category · {{ category.name }}{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Edit category" %}</h1>
+    <p class="sub">{{ category.name }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:categories' %}">{% trans "Back to categories" %}</a>
+  </div>
+</section>
+
+<section class="card">
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% for field in category_form %}
+      <div class="form-field">
+        {% if field.id_for_label %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label>{{ field.label }}</label>
+        {% endif %}
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}
+          <ul class="errors">
+            {% for error in field.errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+      <a class="btn btn-outline" href="{% url 'events:categories' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

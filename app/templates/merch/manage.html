@@ -1,0 +1,28 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+
+{% block extra_head %}
+  {{ block.super }}
+{% endblock %}
+
+{% block content %}
+
+<div id="merchManage">
+  <h1 class="mb-3">{% trans "Merch" %}</h1>
+
+  <div class="d-flex gap-2 mb-3">
+    <a class="btn btn-primary" href="{% url 'merch:product_create' %}">{% trans "+ New Product" %}</a>
+    <a class="btn btn-outline-primary" href="{% url 'merch:category_new' %}">{% trans "+ New Category" %}</a>
+  </div>
+
+  {% if top_categories %}
+    {% for cat in top_categories %}
+      {% include "merch/_category_tree.html" with node=cat currency=currency %}
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info">
+      No categories yet. Click <strong>{% trans "+ New Category" %}</strong> to create one.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

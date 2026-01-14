@@ -1,0 +1,36 @@
+{% load inline_edit i18n %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<section class="page-block page-block--gallery columns-{{ props.columns|default:3 }}" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    {% if props.title %}
+      <div class="page-block__header">
+        {% with style=props.style_inline_targets.title %}
+          <h2 {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'title' %}>{{ props.title|inline_richtext }}</h2>
+        {% endwith %}
+        {% if props.subtitle %}
+          {% with style=props.style_inline_targets.subtitle %}
+            <p {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'subtitle' %}>{{ props.subtitle|inline_richtext }}</p>
+          {% endwith %}
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="page-gallery">
+      {% for item in items %}
+        <figure class="page-gallery__item">
+          {% if item.image_resolved %}
+            <img src="{{ item.image_resolved }}" alt="{{ item.alt|default:item.caption }}">
+          {% endif %}
+          {% if item.caption %}
+            <figcaption>{{ item.caption }}</figcaption>
+          {% endif %}
+        </figure>
+      {% empty %}
+        <p class="muted">{% trans "No images yet." %}</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>

@@ -1,0 +1,298 @@
+{% load i18n %}
+{# app/templates/menu/item_form.html #}
+{% extends "cms/base_cms.html" %}
+{% block content %}
+<style>
+  /* ---------- Layout helpers ---------- */
+  .dietary-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+  .dietary-grid h6 {
+    margin-top: 0;           /* tighter headings */
+    margin-bottom: 0.25rem;
+  }
+
+  /* ---------- Red Delete Button (overrides Bootstrap) ---------- */
+  .btn-delete {
+    background-color: #dc3545 !important; /* base red */
+    border-color: #dc3545 !important;
+    color: #fff !important;
+  }
+  .btn-delete:hover,
+  .btn-delete:focus,
+  .btn-delete:active,
+  .btn-delete.active {
+    background-color: #bb2d3b !important; /* darker on hover/active */
+    border-color: #b02a37 !important;
+    color: #fff !important;
+  }
+  .btn-delete:disabled,
+  .btn-delete.disabled {
+    background-color: #e35d6a !important; /* muted red when disabled */
+    border-color: #e35d6a !important;
+    color: #fff !important;
+    opacity: 0.65;
+  }
+</style>
+
+{# ---------- Page Title ---------- #}
+<h1>
+  {% if item %}Edit item{% else %}New item{% endif %}{% if parent %} in {{ parent.name }}{% endif %}
+</h1>
+
+<form method="post">
+  {% csrf_token %}
+
+  {# ---------- Top-level form errors ---------- #}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="row g-3">
+    {# ---------- Basic fields ---------- #}
+    <div class="col-md-6">
+      {{ form.name.label_tag }} {{ form.name }} {{ form.name.errors }}
+    </div>
+
+    <div class="col-md-6 d-flex align-items-center">
+      <div class="form-check form-switch">
+        {{ form.visible_public }} {{ form.visible_public.label_tag }}
+      </div>
+      {{ form.visible_public.errors }}
+    </div>
+
+    <div class="col-12">
+      {{ form.description.label_tag }} {{ form.description }} {{ form.description.errors }}
+    </div>
+
+    {# ---------- Featured / Flags ---------- #}
+    <div class="col-md-3 d-flex align-items-center">
+      <div class="form-check form-switch">
+        {{ form.featured }} {{ form.featured.label_tag }}
+      </div>
+      {{ form.featured.errors }}
+    </div>
+
+    {# ---------- Availability helpers ---------- #}
+    <div class="col-md-6">
+      <label class="form-label">{% trans "Sold out (optional until)" %}</label>
+      <div class="input-group">
+        <div class="input-group-text">
+          {# small toggle to quickly set/clear a datetime #}
+          <input
+            type="checkbox"
+            onclick="document.getElementById('id_sold_out_until').value = this.checked ? (document.getElementById('id_sold_out_until').value || new Date().toISOString().slice(0,16)) : ''"
+          />
+        </div>
+        {{ form.sold_out_until }}
+      </div>
+      {{ form.sold_out_until.errors }}
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">{% trans "New (optional until)" %}</label>
+      <div class="input-group">
+        <div class="input-group-text">
+          {# small toggle to quickly set/clear a datetime #}
+          <input
+            type="checkbox"
+            onclick="document.getElementById('id_new_until').value = this.checked ? (document.getElementById('id_new_until').value || new Date().toISOString().slice(0,16)) : ''"
+          />
+        </div>
+        {{ form.new_until }}
+      </div>
+      {{ form.new_until.errors }}
+    </div>
+
+    {# ---------- Dietary flags section ---------- #}
+    <div class="col-12">
+      <hr />
+      <h4 class="mb-3">{% trans "Dietary information" %}</h4>
+
+      <div class="dietary-grid">
+        <div>
+          <h6 class="text-muted mb-2">{% trans "Plant-based" %}</h6>
+          <div class="row row-cols-2 g-2">
+            <div class="col form-check form-switch">
+              {{ form.vegan }} {{ form.vegan.label_tag }} {{ form.vegan.errors }}
+            </div>
+            <div class="col form-check form-switch">
+              {{ form.vegetarian }} {{ form.vegetarian.label_tag }} {{ form.vegetarian.errors }}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h6 class="text-muted mb-2">{% trans "Free-from" %}</h6>
+          <div class="row row-cols-2 g-2">
+            <div class="col form-check form-switch">
+              {{ form.gluten_free }} {{ form.gluten_free.label_tag }} {{ form.gluten_free.errors }}
+            </div>
+            <div class="col form-check form-switch">
+              {{ form.sugar_free }} {{ form.sugar_free.label_tag }} {{ form.sugar_free.errors }}
+            </div>
+            <div class="col form-check form-switch">
+              {{ form.lactose_free }} {{ form.lactose_free.label_tag }} {{ form.lactose_free.errors }}
+            </div>
+            <div class="col form-check form-switch">
+              {{ form.nut_free }} {{ form.nut_free.label_tag }} {{ form.nut_free.errors }}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h6 class="text-muted mb-2">{% trans "Religious" %}</h6>
+          <div class="row row-cols-2 g-2">
+            <div class="col form-check form-switch">
+              {{ form.halal }} {{ form.halal.label_tag }} {{ form.halal.errors }}
+            </div>
+            <div class="col form-check form-switch">
+              {{ form.kosher }} {{ form.kosher.label_tag }} {{ form.kosher.errors }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ---------- Variants (formset) ---------- #}
+    <div class="col-12">
+      <hr />
+      <h4>{% trans "Variants" %}</h4>
+    </div>
+
+    {# Management + non-form errors #}
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+      <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+    {% endif %}
+
+    <div class="col-12">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th>{% trans "Label" %}</th>
+              <th>{% trans "Quantity" %}</th>
+              <th>{% trans "Unit" %}</th>
+              <th>{% trans "Price" %}</th>
+              <th>{% trans "ABV %" %}</th>
+              <th class="text-center" style="width: 140px;">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="variants-body">
+            {% for f in formset %}
+              <tr class="variant-row">
+                {# keep hidden fields on the same row so they submit with it #}
+                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+
+                <td>{{ f.label }} {{ f.label.errors }}</td>
+                <td>{{ f.quantity }} {{ f.quantity.errors }}</td>
+                <td>{{ f.unit }} {{ f.unit.errors }}</td>
+                <td>{{ f.price }} {{ f.price.errors }}</td>
+                <td>{{ f.abv }} {{ f.abv.errors }}</td>
+
+                <td class="text-center">
+                  {# DELETE checkbox stays hidden; our button will toggle it #}
+                  <span class="delete-input" style="display:none">{{ f.DELETE }}</span>
+
+                  {# Red delete button (client-side hide + marks DELETE) #}
+                  <button type="button" class="btn btn-sm btn-delete" onclick="deleteVariant(this)">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {# Add new blank variant row from empty_form template #}
+        <button type="button" class="btn btn-secondary" id="add-variant">{% trans "+ Add variant" %}</button>
+      </div>
+    </div>
+
+    {# ---------- Form actions ---------- #}
+    <div class="col-12">
+      <button class="btn btn-primary">{% trans "Save" %}</button>
+      <a class="btn btn-secondary" href="{% url 'menu:manage' %}">{% trans "Cancel" %}</a>
+    </div>
+  </div>
+</form>
+
+{# ---------- Template for a brand-new variant row (uses __prefix__) ---------- #}
+<template id="variant-row-template">
+  <tr class="variant-row">
+    {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+    <td>{{ formset.empty_form.label }}</td>
+    <td>{{ formset.empty_form.quantity }}</td>
+    <td>{{ formset.empty_form.unit }}</td>
+    <td>{{ formset.empty_form.price }}</td>
+    <td>{{ formset.empty_form.abv }}</td>
+    <td class="text-center">
+      <span class="delete-input" style="display:none">{{ formset.empty_form.DELETE }}</span>
+      <button type="button" class="btn btn-sm btn-delete" onclick="deleteVariant(this)">{% trans "Delete" %}</button>
+    </td>
+  </tr>
+</template>
+
+<script>
+  (function () {
+    const prefix = "{{ formset.prefix }}";
+    const total = document.getElementById("id_" + prefix + "-TOTAL_FORMS");
+    const tbody = document.getElementById("variants-body");
+    const tmpl = document.getElementById("variant-row-template");
+
+    /**
+     * Replace __prefix__ placeholders in name/id/for with the new index
+     * so Django accepts the dynamically-added form.
+     */
+    function renumberPlaceholders(root, idx) {
+      root.querySelectorAll("input,select,textarea,label").forEach(el => {
+        if (el.name) el.name = el.name.replace(/__prefix__/g, idx);
+        if (el.id) el.id = el.id.replace(/__prefix__/g, idx);
+        if (el.htmlFor) el.htmlFor = el.htmlFor.replace(/__prefix__/g, idx);
+      });
+    }
+
+    /**
+     * Delete handler: mark the form's hidden DELETE field and hide the row immediately.
+     * Django will process the deletion on submit.
+     */
+    window.deleteVariant = function (btn) {
+      const row = btn.closest("tr");
+      if (!row) return;
+      const del = row.querySelector("input[name^='" + prefix + "-'][name$='-DELETE']");
+      if (del) {
+        if (del.type === "checkbox") del.checked = true;
+        else del.value = "on";
+      }
+      row.style.display = "none";
+    };
+
+    /**
+     * Add a new variant row from empty_form template.
+     * Increments TOTAL_FORMS so Django knows about the new form.
+     */
+    document.getElementById("add-variant")?.addEventListener("click", function () {
+      const idx = parseInt(total.value, 10);
+      const shim = document.createElement("tbody");
+      shim.innerHTML = tmpl.innerHTML.trim();
+      const row = shim.firstElementChild;
+
+      renumberPlaceholders(row, idx);
+
+      // Ensure fresh, blank inputs on the new row
+      row.querySelectorAll("input,select,textarea").forEach(el => {
+        if (el.type === "checkbox" || el.type === "radio") el.checked = false;
+        else if (el.tagName === "SELECT") el.selectedIndex = -1; /* leave unselected */
+        else el.value = "";
+      });
+
+      tbody.appendChild(row);
+      total.value = idx + 1; // inform Django formset about the new form
+    });
+  })();
+</script>
+{% endblock %}

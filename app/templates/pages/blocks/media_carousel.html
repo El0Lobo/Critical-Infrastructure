@@ -1,0 +1,122 @@
+{% load inline_edit i18n %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<section class="page-block page-block--media-carousel" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    {% if props.title or props.subtitle %}
+      <div class="page-block__header">
+        {% if props.title %}
+          {% with style=props.style_inline_targets.title %}
+            <h2 {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'title' %}>{{ props.title|inline_richtext }}</h2>
+          {% endwith %}
+        {% endif %}
+        {% if props.subtitle %}
+          {% with style=props.style_inline_targets.subtitle %}
+            <p class="muted" {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'subtitle' %}>{{ props.subtitle|inline_richtext }}</p>
+          {% endwith %}
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if items %}
+      <div class="page-carousel"
+           id="{{ carousel_id }}"
+           data-carousel
+           data-autoplay="{{ autoplay|yesno:'true,false' }}"
+           data-interval="{{ autoplay_interval }}">
+        <button type="button" class="page-carousel__nav page-carousel__nav--prev" data-carousel-prev aria-label="{% trans 'Previous slide' %}">‹</button>
+        <div class="page-carousel__viewport" data-carousel-viewport>
+          {% for item in items %}
+            <figure class="page-carousel__slide{% if forloop.first %} is-active{% endif %}" data-carousel-slide data-index="{{ forloop.counter0 }}">
+              <div class="page-carousel__media">
+                {% if item.kind == 'video' %}
+                  <video controls preload="metadata" {% if autoplay and forloop.first %}autoplay muted{% endif %}>
+                    <source src="{{ item.url }}">
+                  </video>
+                {% else %}
+                  <img src="{{ item.url }}" alt="{{ item.title }}">
+                {% endif %}
+              </div>
+              {% if item.caption or item.description or item.cta_label %}
+                <figcaption class="page-carousel__caption">
+                  {% if item.caption %}<strong>{{ item.caption }}</strong>{% endif %}
+                  {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+                  {% if item.cta_label and item.cta_url %}
+                    <a class="btn btn-sm" href="{{ item.cta_url }}">{{ item.cta_label }}</a>
+                  {% endif %}
+                </figcaption>
+              {% endif %}
+            </figure>
+          {% endfor %}
+        </div>
+        <button type="button" class="page-carousel__nav page-carousel__nav--next" data-carousel-next aria-label="{% trans 'Next slide' %}">›</button>
+        {% if show_thumbnails and items|length > 1 %}
+          <div class="page-carousel__dots">
+            {% for item in items %}
+              <button type="button"
+                      class="page-carousel__dot{% if forloop.first %} is-active{% endif %}"
+                      data-carousel-dot
+                      data-index="{{ forloop.counter0 }}"
+                      aria-label="Go to slide {{ forloop.counter }}"></button>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="muted">{% trans "No media selected yet." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% if items %}
+  <script>
+  (function(){
+    const root = document.getElementById('{{ carousel_id }}');
+    if (!root) return;
+    const slides = Array.from(root.querySelectorAll('[data-carousel-slide]'));
+    if (!slides.length) return;
+    const dots = Array.from(root.querySelectorAll('[data-carousel-dot]'));
+    const prev = root.querySelector('[data-carousel-prev]');
+    const next = root.querySelector('[data-carousel-next]');
+    let index = 0;
+
+    function setIndex(nextIndex) {
+      if (!slides.length) return;
+      index = (nextIndex + slides.length) % slides.length;
+      slides.forEach((slide, idx) => slide.classList.toggle('is-active', idx === index));
+      dots.forEach((dot, idx) => dot.classList.toggle('is-active', idx === index));
+    }
+
+    prev?.addEventListener('click', () => setIndex(index - 1));
+    next?.addEventListener('click', () => setIndex(index + 1));
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const target = Number(dot.dataset.index) || 0;
+        setIndex(target);
+      });
+    });
+
+    const autoplay = root.getAttribute('data-autoplay') === 'true';
+    const intervalSeconds = Number(root.getAttribute('data-interval')) || {{ autoplay_interval }};
+    let timer = null;
+
+    function startAuto(){
+      if (!autoplay || slides.length < 2) return;
+      stopAuto();
+      timer = window.setInterval(() => setIndex(index + 1), Math.max(intervalSeconds * 1000, 3000));
+    }
+
+    function stopAuto(){
+      if (timer) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    root.addEventListener('mouseenter', stopAuto);
+    root.addEventListener('mouseleave', startAuto);
+    startAuto();
+  })();
+  </script>
+{% endif %}

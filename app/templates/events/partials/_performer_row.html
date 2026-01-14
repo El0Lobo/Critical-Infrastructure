@@ -1,0 +1,45 @@
+{% load i18n %}
+<tr class="performer-row" data-form-prefix="{{ form.prefix }}">
+  <td class="field-col">
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    {{ form.band }}
+    {% for error in form.band.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.new_band_name }}
+    {% for error in form.new_band_name.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.display_name }}
+    {% for error in form.display_name.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.performer_type_override }}
+    {% for error in form.performer_type_override.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.slot_starts_at }}
+    {% for error in form.slot_starts_at.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.slot_ends_at }}
+    {% for error in form.slot_ends_at.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col small">
+    {{ form.order }}
+    {% for error in form.order.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col">
+    {{ form.notes }}
+    {% for error in form.notes.errors %}<p class="error">{{ error }}</p>{% endfor %}
+  </td>
+  <td class="field-col actions">
+    {% if form.can_delete %}
+      <label class="checkbox-inline">
+        {{ form.DELETE }} Remove
+      </label>
+    {% else %}
+      <button type="button" class="btn btn-outline" data-remove-performer>{% trans "Remove" %}</button>
+    {% endif %}
+  </td>
+</tr>

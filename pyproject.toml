@@ -1,0 +1,181 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "el0lobo-cms"
+version = "0.1.0"
+description = "El0lobo CMS - A Django-based content management system"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "app.core.settings"
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+testpaths = ["app"]
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--strict-config",
+    "--reuse-db",
+    "--no-migrations",  # Faster tests
+    "--cov=app",
+    "--cov-report=html",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=0",  # Start at 0, increase as tests are added
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "manage.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "virtualenv",
+    "__pycache__",
+    "*/migrations/*",
+    "staticfiles",
+    "media",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "DJ",     # flake8-django
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+]
+ignore = [
+    "E501",   # line too long (handled by ruff format)
+    "B008",   # do not perform function calls in argument defaults
+    "W191",   # indentation contains tabs
+    "B904",   # Allow raising exceptions without from e, for HTTPException
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"*/settings.py" = ["F405", "F403"]  # Allow star imports in settings
+"*/tests/*" = ["S101"]  # Allow assert in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "core"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+exclude = [
+    "migrations/",
+    "venv/",
+    "virtualenv/",
+    ".venv/",
+]
+
+# Permissive settings for Django compatibility
+check_untyped_defs = false
+disallow_any_generics = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+ignore_missing_imports = true
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+warn_return_any = false
+warn_unused_configs = false
+warn_no_return = false
+warn_unreachable = false
+allow_untyped_calls = true
+allow_untyped_defs = true
+allow_incomplete_defs = true
+allow_untyped_globals = true
+implicit_reexport = true
+strict_optional = false
+show_error_codes = true
+
+# Ignore errors in specific modules with known Django issues
+[[tool.mypy.overrides]]
+module = [
+    "app.*.models",
+    "app.*.forms",
+    "app.*.admin",
+    "app.*.views",
+    "app.*.api_views",
+    "app.*.views_public",
+    "app.*.urls",
+    "app.*.urls_public",
+    "app.*.urls_cms",
+    "app.*.selectors",
+    "app.*.serializers",
+    "app.*.templatetags.*",
+    "app.*.management.commands.*",
+    "app.*.tests.*",
+]
+ignore_errors = true
+
+# Django specific
+[tool.django-stubs]
+django_settings_module = "app.core.settings"
+
+[tool.bandit]
+exclude_dirs = [
+    "*/tests/*",
+    "*/migrations/*",
+    "venv",
+    ".venv",
+]
+skips = [
+    "B101",  # assert_used - OK in tests
+    "B110",  # try_except_pass - Common Django pattern
+    "B112",  # try_except_continue - Common Django pattern
+    "B308",  # mark_safe - Django templatetag pattern (reviewed)
+    "B601",  # paramiko_calls - not applicable
+    "B703",  # django_mark_safe - Django templatetag pattern (reviewed)
+]

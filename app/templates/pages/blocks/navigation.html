@@ -1,0 +1,102 @@
+{% load static %}
+{% load i18n %}
+{% load inline_edit %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<section class="page-block page-block--navigation" data-builder-nav {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    <header class="page-nav page-nav--{{ props.layout|default:'center' }}">
+      {% if props.show_theme_switcher %}
+        {% with nav_id=block.id|default:'nav' %}
+          <div class="page-nav__themes">
+            <details class="theme-switcher" data-theme-dropdown>
+              <summary class="theme-switcher__toggle">
+                <span>{% trans "Style" %}</span>
+                <span class="theme-switcher__chevron" aria-hidden="true">▾</span>
+              </summary>
+              <div class="theme-switcher__panel">
+                <div class="theme-switcher__group">
+                  <label class="sr-only" for="theme-switcher-{{ nav_id }}">{% trans "Theme" %}</label>
+                  <select class="theme-switcher__select" id="theme-switcher-{{ nav_id }}" data-theme-switcher>
+                    <option value="standard">{% trans "Standard look" %}</option>
+                    <option value="80s">{% trans "80s" %}</option>
+                    <option value="neobrutalism">{% trans "Neobrutalism" %}</option>
+                    <option value="glass">{% trans "Glassmorphism" %}</option>
+                    <option value="grunge">{% trans "Grunge" %}</option>
+                    <option value="tales">{% trans "Weird Tales" %}</option>
+                    <option value="y2k">{% trans "Y2K" %}</option>
+                    <option value="70s">{% trans "70s" %}</option>
+                  </select>
+                </div>
+                <div class="theme-switcher__group">
+                  <label class="sr-only" for="background-switcher-{{ nav_id }}">{% trans "Background" %}</label>
+                  <select class="theme-switcher__select" id="background-switcher-{{ nav_id }}" data-theme-background>
+                    {% if theme_backgrounds %}
+                      <option value="default">{% trans "Default background" %}</option>
+                      <option value="lowpoly">{% trans "Low poly (animated)" %}</option>
+                      <optgroup label="{% trans 'Uploaded backgrounds' %}">
+                        {% for bg in theme_backgrounds %}
+                          <option value="{{ bg.value }}" data-bg-url="{{ bg.url }}">{{ bg.label }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% else %}
+                      <option value="lowpoly">{% trans "Low poly (animated)" %}</option>
+                    {% endif %}
+                  </select>
+                </div>
+                <div class="theme-switcher__group">
+                  <label class="sr-only" for="texture-switcher-{{ nav_id }}">{% trans "Texture overlay" %}</label>
+                  <select class="theme-switcher__select" id="texture-switcher-{{ nav_id }}" data-theme-texture>
+                    {% if theme_textures %}
+                      <option value="none">{% trans "No texture" %}</option>
+                      <optgroup label="{% trans 'Uploaded textures' %}">
+                        {% for tex in theme_textures %}
+                          <option value="{{ tex.value }}" data-texture-url="{{ tex.url }}">{{ tex.label }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% else %}
+                      <option value="none">{% trans "No texture" %}</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+        {% endwith %}
+      {% endif %}
+      <div class="page-nav__brand">
+        {% if props.show_logo and logo %}
+          <img src="{{ logo }}" alt="{{ site.name }}" {% inline_image_attrs block 'logo_width' %} data-inline-image-min="40" data-inline-image-max="600"{% if props.logo_width %} style="width:{{ props.logo_width }}px"{% endif %}>
+        {% endif %}
+        {% with brand_style=props.style_inline_targets.logo_text %}
+          {% if props.logo_text_auto %}
+            <span {% inline_attrs block 'logo_text' %}{% if brand_style %} style="{{ brand_style }}"{% endif %}>
+              {% with text=props.logo_text|default:site.name %}
+                {{ text|inline_richtext }}
+              {% endwith %}
+            </span>
+          {% elif props.logo_text %}
+            <span {% inline_attrs block 'logo_text' %}{% if brand_style %} style="{{ brand_style }}"{% endif %}>{{ props.logo_text|inline_richtext }}</span>
+          {% endif %}
+        {% endwith %}
+      </div>
+      {% if nav_items %}
+        <nav class="page-nav__links">
+          {% with link_style=props.style_inline_targets.links %}
+            {% for item in nav_items %}
+              <a href="{{ item.pretty_url|default:item.url }}"{% if link_style %} style="{{ link_style }}"{% endif %}>{{ item.title }}</a>
+            {% endfor %}
+          {% endwith %}
+        </nav>
+      {% endif %}
+      {% if props.show_language_switcher and enabled_languages|length > 1 %}
+        <div class="page-nav__langs">
+          {% include "common/language_switcher.html" with switcher_class="lang-switcher--public" switcher_id="lang-switcher-public" %}
+        </div>
+      {% endif %}
+    </header>
+  </div>
+</section>

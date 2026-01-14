@@ -1,0 +1,21 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+
+{% block content %}
+  <h1>{% trans "Menu" %}</h1>
+
+  {% if roots %}
+    <div class="menu-tree">
+      <ul class="list-unstyled">
+        {% for root in roots %}
+          <li class="mb-3">
+            <h2 class="h4 m-0">{{ root.name }}</h2>
+            {% include "public/menu/partials/_public_category.html" with category=root only %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% else %}
+    <p>{% trans "No categories yet." %}</p>
+  {% endif %}
+{% endblock content %}

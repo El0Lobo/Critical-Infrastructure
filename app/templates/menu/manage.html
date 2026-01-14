@@ -1,0 +1,22 @@
+{% extends 'cms/base_cms.html' %}
+{% load static i18n %}
+
+{% block extra_head %}
+  {{ block.super }}
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>{% trans "Menu" %}</h1>
+  <a class="btn btn-primary" href="{% url 'menu:category_create' %}">{% trans "Add top-level category" %}</a>
+</div>
+
+{% if root_categories %}
+  {% for root in root_categories %}
+    {% include 'menu/_category_tree.html' with node=root currency=currency %}
+  {% endfor %}
+{% else %}
+  <div class="alert alert-info">{% trans "No categories yet. Start by adding a top-level category." %}</div>
+{% endif %}
+{% endblock %}

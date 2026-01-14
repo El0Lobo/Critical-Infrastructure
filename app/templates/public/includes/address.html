@@ -1,0 +1,8 @@
+{% comment %}Renders the address if any part exists{% endcomment %}
+{% if site_address_has_any %}
+  <address class="muted" style="margin-top:.5rem; line-height:1.3;">
+    {% if site_address_line1 %}<div>{{ site_address_line1 }}</div>{% endif %}
+    {% if site_address_line2 %}<div>{{ site_address_line2 }}</div>{% endif %}
+    {% if site_address_line3 %}<div>{{ site_address_line3 }}</div>{% endif %}
+  </address>
+{% endif %}

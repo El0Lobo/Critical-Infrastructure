@@ -1,0 +1,7 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "You're all set ✅" %}</h1>
+<p>{% trans "You can edit your visibility settings later via your profile." %}</p>
+<p><a class="btn btn-primary" href="{% url 'users:index' %}">{% trans "Go to Users" %}</a></p>
+{% endblock %}

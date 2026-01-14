@@ -1,0 +1,31 @@
+{% load i18n %}
+
+{% extends 'cms/base_cms.html' %}
+{% block content %}
+<h1>{% trans "Menu" %}</h1>
+<p>
+  <a class="btn btn-primary" href="{% url 'menu:category_create' %}">{% trans "+ New top-level category" %}</a>
+</p>
+<table class="table">
+  <thead>
+    <tr><th>{% trans "Name" %}</th><th>{% trans "Kind" %}</th><th>{% trans "Unit group" %}</th><th>{% trans "Items" %}</th><th style="width:260px;"></th></tr>
+  </thead>
+  <tbody>
+    {% for c in categories %}
+    <tr>
+      <td style="padding-left: {{ c.depth|add:'1' }}rem">{% if c.parent %}↳ {% endif %}<strong>{{ c.name }}</strong></td>
+      <td>{{ c.get_kind_display }}</td>
+      <td>{{ c.unit_group }}</td>
+      <td>{{ c.items.count }}</td>
+      <td style="display:flex; gap:.5rem;">
+        <a class="btn btn-sm btn-secondary" href="{% url 'menu:category_edit' c.slug %}">{% trans "Rename / Edit" %}</a>
+        <a class="btn btn-sm btn-primary" href="{% url 'menu:category_create_child' c.slug %}">{% trans "+ Subcategory" %}</a>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'menu:item_create_here' c.slug %}">{% trans "+ Item here" %}</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% trans "No categories yet." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

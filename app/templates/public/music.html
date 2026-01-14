@@ -1,0 +1,36 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Music — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>{% trans "Listen" %}</h2>
+
+  {% if site_settings.social_spotify or site_settings.social_soundcloud or site_settings.social_bandcamp %}
+    <div class="grid" style="display:grid;grid-template-columns:1fr;gap:16px;">
+      {% if site_settings.social_spotify %}
+        <div class="card">
+          <h3>{% trans "Spotify" %}</h3>
+          <p><a href="{{ site_settings.social_spotify }}" target="_blank" rel="noopener">{% trans "Open on Spotify" %}</a></p>
+          {# Optional: paste Spotify embed iframe here if you like #}
+        </div>
+      {% endif %}
+      {% if site_settings.social_soundcloud %}
+        <div class="card">
+          <h3>{% trans "SoundCloud" %}</h3>
+          <p><a href="{{ site_settings.social_soundcloud }}" target="_blank" rel="noopener">{% trans "Open on SoundCloud" %}</a></p>
+          {# Optional SoundCloud embed #}
+        </div>
+      {% endif %}
+      {% if site_settings.social_bandcamp %}
+        <div class="card">
+          <h3>{% trans "Bandcamp" %}</h3>
+          <p><a href="{{ site_settings.social_bandcamp }}" target="_blank" rel="noopener">{% trans "Open on Bandcamp" %}</a></p>
+          {# Optional Bandcamp embed #}
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <p class="muted">{% trans "Add Spotify, SoundCloud or Bandcamp links in" %} <em>{% trans "Setup → Socials & Contact" %}</em> {% trans "to show them here." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

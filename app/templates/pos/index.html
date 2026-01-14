@@ -1,0 +1,284 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n setup_tags %}
+{% block title %}POS — CMS{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'pos/pos.js' %}"></script>
+<style>
+  /* Optional: page-level overrides */
+</style>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const cards = document.querySelectorAll(".card[data-collapsible-key]");
+      cards.forEach((card) => {
+        const heading = card.querySelector("h2");
+        const toggleBtn = heading && heading.querySelector(".collapse-toggle");
+        const body = card.querySelector(".card__body");
+        if (!heading || !toggleBtn || !body) return;
+        const key =
+          card.getAttribute("data-collapsible-key") ||
+          `pos:${(heading.textContent || "").trim().toLowerCase().replace(/\s+/g, "-")}`;
+        let stored = null;
+        try {
+          stored = window.localStorage.getItem(key);
+        } catch (error) {
+          stored = null;
+        }
+        const defaultOpen = stored == null ? "true" : stored === "1" ? "true" : "false";
+        card.setAttribute("aria-expanded", defaultOpen);
+        const toggle = () => {
+          const isOpen = card.getAttribute("aria-expanded") === "true";
+          const nextState = !isOpen;
+          card.setAttribute("aria-expanded", nextState ? "true" : "false");
+          try {
+            window.localStorage.setItem(key, nextState ? "1" : "0");
+          } catch (error) {
+            // ignore storage errors
+          }
+        };
+        toggleBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggle();
+        });
+        heading.addEventListener("click", (event) => {
+          const target = event.target;
+          if (target.closest("button, a, input, select, textarea")) {
+            return;
+          }
+          toggle();
+        });
+      });
+
+      const wrapper = document.querySelector('[data-formset-prefix="{{ quickbuttons.prefix }}"]');
+      if (!wrapper) return;
+      const prefix = wrapper.getAttribute("data-formset-prefix");
+      const addBtn = wrapper.querySelector("[data-add-form]");
+      const totalInput = wrapper.querySelector(`input[name="${prefix}-TOTAL_FORMS"]`);
+      const tbody = wrapper.querySelector("tbody");
+      const template = wrapper.querySelector("#quickbuttons-empty-row");
+      if (!addBtn || !totalInput || !tbody || !template) return;
+      const templateHTML = template.innerHTML.trim();
+      addBtn.addEventListener("click", function () {
+        const parser = document.createElement("tbody");
+        const index = parseInt(totalInput.value || "0", 10);
+        parser.innerHTML = templateHTML.replace(/__prefix__/g, index);
+        const row = parser.firstElementChild;
+        if (row) {
+          tbody.appendChild(row);
+          totalInput.value = index + 1;
+        }
+      });
+      wrapper.addEventListener("click", function (e) {
+        const btn = e.target.closest("[data-delete-row]");
+        if (!btn) return;
+        const row = btn.closest("tr");
+        if (!row) return;
+        const checkbox = row.querySelector(".delete-field input[type='checkbox']");
+        if (!checkbox) return;
+        if (checkbox.checked) {
+          checkbox.checked = false;
+          row.classList.remove("is-deleted");
+          row.style.display = "";
+          return;
+        }
+        if (confirm("Remove this discount button?")) {
+          checkbox.checked = true;
+          row.classList.add("is-deleted");
+          row.style.display = "none";
+        }
+      });
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+<div id="pos-root" class="pos-grid" data-endpoints='{
+  "search":"{% url 'pos:api_search_items' %}",
+  "browse":"{% url 'pos:api_browse_items' %}",           
+  "add":"{% url 'pos:api_cart_add' %}",
+  "remove":"{% url 'pos:api_cart_remove' %}",
+  "update":"{% url 'pos:api_cart_update' %}",
+  "clear":"{% url 'pos:api_cart_clear' %}",
+  "applyDiscount":"{% url 'pos:api_cart_apply_discount' %}",
+  "totals":"{% url 'pos:api_cart_totals' %}",
+  "checkout":"{% url 'pos:api_checkout' %}",
+  "buttons":"{% url 'pos:api_quick_buttons' %}"
+}' data-config='{{ pos_config_json|default:"{}" }}'>
+
+  <div class="pos-left">
+    <div class="search-bar">
+      <input id="posSearch" type="text" placeholder="{% trans 'Search menu…' %}" autocomplete="off">
+    </div>
+    <div id="posResults" class="results-grid" aria-live="polite"></div>
+  </div>
+
+  <div class="pos-right">
+    <div class="cart-card">
+      <header>
+        <h3>{% trans "Cart" %}</h3>
+        <div class="cart-actions">
+          <button id="btnClearCart" class="btn danger">{% trans "Clear" %}</button>
+        </div>
+      </header>
+      <div id="cartLines" class="cart-lines">
+        {# filled by JS #}
+      </div>
+      <footer id="cartTotals">
+        {% include "pos/_cart_totals.html" with cart=cart pos_config=pos_config %}
+      </footer>
+    </div>
+
+    {% if pos_config.show_discounts %}
+      <div class="buttons-card" id="posDiscountsCard">
+        <header><h3>{% trans "Quick Discounts" %}</h3></header>
+        <div id="quickButtons" class="buttons-grid">
+          {# populated by JS from /api/quick-buttons/ #}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="checkout-card">
+      <header><h3>{% trans "Checkout" %}</h3></header>
+      <div class="pay-row">
+        <select id="paymentKind">
+          <option value="CASH">{% trans "Cash" %}</option>
+          <option value="CARD">{% trans "Card" %}</option>
+          <option value="OTHER">{% trans "Other" %}</option>
+        </select>
+        <input id="paymentAmount" type="number" step="0.01" min="0" placeholder="{% trans 'Amount' %}">
+        <button id="btnCheckout" class="btn primary">{% trans "Complete Sale" %}</button>
+      </div>
+      <small class="muted">{% trans "MVP supports one payment per sale; extend as needed." %}</small>
+    </div>
+  </div>
+</div>
+
+<section class="card" data-collapsible-key="pos:settings" style="margin-top:2rem;">
+  <h2>
+    <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+    {% trans "POS settings" %}
+    <span class="visibility-anchor">{% visibility_cog_inline 'cms.pos.settings' 'POS settings' target='.visibility-anchor' %}</span>
+  </h2>
+  <div class="card__body stack">
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ pos_form.non_field_errors }}
+      <div class="grid-2">
+        <div class="field">
+          <label class="checkbox">
+            {{ pos_form.pos_show_discounts }} <span>{{ pos_form.pos_show_discounts.label }}</span>
+          </label>
+          {% if pos_form.pos_show_discounts.help_text %}
+            <p class="text-muted small mb-0">{{ pos_form.pos_show_discounts.help_text }}</p>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            {{ pos_form.pos_apply_discounts }} <span>{{ pos_form.pos_apply_discounts.label }}</span>
+          </label>
+          {% if pos_form.pos_apply_discounts.help_text %}
+            <p class="text-muted small mb-0">{{ pos_form.pos_apply_discounts.help_text }}</p>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            {{ pos_form.pos_show_tax }} <span>{{ pos_form.pos_show_tax.label }}</span>
+          </label>
+          {% if pos_form.pos_show_tax.help_text %}
+            <p class="text-muted small mb-0">{{ pos_form.pos_show_tax.help_text }}</p>
+          {% endif %}
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            {{ pos_form.pos_apply_tax }} <span>{{ pos_form.pos_apply_tax.label }}</span>
+          </label>
+          {% if pos_form.pos_apply_tax.help_text %}
+            <p class="text-muted small mb-0">{{ pos_form.pos_apply_tax.help_text }}</p>
+          {% endif %}
+        </div>
+        <div class="field">
+          {{ pos_form.pos_tax_rate.label_tag }} {{ pos_form.pos_tax_rate }}
+          {% if pos_form.pos_tax_rate.help_text %}
+            <p class="text-muted small mb-0">{{ pos_form.pos_tax_rate.help_text }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr class="rule">
+      <div class="stack" data-formset-prefix="{{ quickbuttons.prefix }}">
+        <div class="flex-between">
+          <h3 class="mb-0">{% trans "Quick discount buttons" %}</h3>
+          <button type="button" class="btn btn-sm" data-add-form>{% trans "Add button" %}</button>
+        </div>
+        <p class="text-muted mb-0">{% trans "Each button can target the whole order or the selected cart line." %}</p>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{% trans "Label" %}</th>
+                <th>{% trans "Type" %}</th>
+                <th>{% trans "Value" %}</th>
+                <th>{% trans "Scope" %}</th>
+                <th>{% trans "Reason" %}</th>
+                <th>{% trans "Sort" %}</th>
+                <th>{% trans "Active" %}</th>
+                <th>{% trans "Delete" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ quickbuttons.management_form }}
+              {% for qform in quickbuttons %}
+                <tr>
+                  <td>{{ qform.id }}{{ qform.label }}</td>
+                  <td>{{ qform.discount_type }}</td>
+                  <td>{{ qform.value }}</td>
+                  <td>{{ qform.scope }}</td>
+                  <td>{{ qform.reason }}</td>
+                  <td>{{ qform.sort_order }}</td>
+                  <td>{{ qform.is_active }}</td>
+                  <td class="text-center">
+                    {% if qform.DELETE %}
+                      <span class="delete-field" style="display:none;">{{ qform.DELETE }}</span>
+                      <button type="button" class="btn btn-sm btn-danger" data-delete-row>{% trans "Delete" %}</button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% if qform.non_field_errors %}
+                  <tr><td colspan="8" class="text-danger small">{{ qform.non_field_errors }}</td></tr>
+                {% endif %}
+              {% empty %}
+                <tr><td colspan="8" class="text-muted">{% trans "No quick discounts configured yet." %}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <template id="quickbuttons-empty-row">
+          <tr>
+            <td>{{ quickbuttons.empty_form.id }}{{ quickbuttons.empty_form.label }}</td>
+            <td>{{ quickbuttons.empty_form.discount_type }}</td>
+            <td>{{ quickbuttons.empty_form.value }}</td>
+            <td>{{ quickbuttons.empty_form.scope }}</td>
+            <td>{{ quickbuttons.empty_form.reason }}</td>
+            <td>{{ quickbuttons.empty_form.sort_order }}</td>
+            <td>{{ quickbuttons.empty_form.is_active }}</td>
+            <td class="text-center">
+              {% if quickbuttons.empty_form.DELETE %}
+                <span class="delete-field" style="display:none;">{{ quickbuttons.empty_form.DELETE }}</span>
+                <button type="button" class="btn btn-sm btn-danger" data-delete-row>{% trans "Delete" %}</button>
+              {% endif %}
+            </td>
+          </tr>
+        </template>
+      </div>
+
+      <div class="page-actions" style="margin-top:1rem;">
+        <button type="submit" class="btn btn-primary">{% trans "Save POS settings" %}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

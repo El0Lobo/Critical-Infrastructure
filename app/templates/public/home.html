@@ -1,0 +1,34 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}{{ site_settings.org_name|default:"Home" }}{% endblock %}
+{% block content %}
+<section class="grid grid-2">
+  <div class="card">
+    <h2>{% trans "Welcome" %}</h2>
+    <p>
+      {% if site_settings.mode == 'VENUE' %}
+        Explore upcoming <a href="/events/">{% trans "events" %}</a>{% trans ", see our" %} <a href="/menu/">{% trans "menu" %}</a>{% trans ", and browse the" %} <a href="/gallery/">{% trans "gallery" %}</a>.
+      {% elif site_settings.mode == 'BAND' %}
+        Check our latest <a href="/shows/">{% trans "shows" %}</a>{% trans ", stream" %} <a href="/music/">{% trans "music" %}</a>{% trans ", and watch" %} <a href="/videos/">{% trans "videos" %}</a>.
+      {% else %}
+        Catch up on our latest <a href="{% url 'news_public:public_news_index' %}">{% trans "news" %}</a>{% trans ", or learn more" %} <a href="/about/">{% trans "about" %}</a> the author.
+      {% endif %}
+    </p>
+  </div>
+  <div class="card">
+    <h2>{% trans "Find us" %}</h2>
+    {% if site_settings.geo_lat and site_settings.geo_lng %}
+      <p class="muted">Lat: {{ site_settings.geo_lat }}, Lng: {{ site_settings.geo_lng }}</p>
+    {% endif %}
+    {% if site_address_has_any %}
+      <p>
+        {% if site_address_line1 %}{{ site_address_line1 }}<br>{% endif %}
+        {% if site_address_line2 %}{{ site_address_line2 }}<br>{% endif %}
+        {% if site_address_line3 %}{{ site_address_line3 }}{% endif %}
+      </p>
+    {% else %}
+      <p class="muted">{% trans "Set your address in Setup → Address to show it here." %}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""
+Project Reset - Nuclear option to start fresh
+Removes database, virtual environment, and runs full setup + CI
+Platform-agnostic for Windows, Linux, and macOS
+"""
+
+import os
+import sys
+import platform
+import shutil
+import subprocess
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    console,
+    print_success,
+    print_error,
+    print_info,
+    print_warning,
+    get_project_root,
+    show_banner,
+)
+
+
+def confirm_reset():
+    """Ask user to confirm the reset operation"""
+    console.print()
+    print_warning("This will DELETE:")
+    console.print("  • Database (db.sqlite3)")
+    console.print("  • Virtual environment (.venv)")
+    console.print("  • Environment config (.env)")
+    console.print()
+    print_info("Then it will run a fresh setup and CI checks.")
+    console.print()
+
+    try:
+        response = input("Are you SURE you want to reset everything? (yes/no): ").strip().lower()
+    except (KeyboardInterrupt, EOFError):
+        console.print()
+        print_info("Reset cancelled")
+        return False
+
+    return response.startswith("y")
+
+
+def remove_database():
+    """Remove the SQLite database"""
+    project_root = get_project_root()
+    db_file = project_root / "db.sqlite3"
+
+    if db_file.exists():
+        print_info("Removing database...")
+        try:
+            db_file.unlink()
+            print_success("Database removed")
+        except Exception as e:
+            print_error(f"Failed to remove database: {e}")
+            return False
+    else:
+        print_info("No database file found")
+
+    return True
+
+
+def remove_venv():
+    """Remove the virtual environment"""
+    project_root = get_project_root()
+    venv_path = project_root / ".venv"
+
+    if venv_path.exists():
+        print_info("Removing virtual environment...")
+        try:
+            shutil.rmtree(venv_path)
+            print_success("Virtual environment removed")
+        except Exception as e:
+            print_error(f"Failed to remove venv: {e}")
+            return False
+    else:
+        print_info("No virtual environment found")
+
+    return True
+
+
+def remove_env():
+    """Remove the .env file"""
+    project_root = get_project_root()
+    env_file = project_root / ".env"
+
+    if env_file.exists():
+        print_info("Removing .env file...")
+        try:
+            env_file.unlink()
+            print_success(".env file removed")
+        except Exception as e:
+            print_error(f"Failed to remove .env: {e}")
+            return False
+    else:
+        print_info("No .env file found")
+
+    return True
+
+
+def run_setup():
+    """Run the setup script"""
+    project_root = get_project_root()
+    setup_script = project_root / "bin" / "setup"
+
+    print_info("Running setup...")
+    console.print()
+
+    if platform.system() == "Windows":
+        cmd = ["python", str(setup_script)]
+    else:
+        cmd = [str(setup_script)]
+
+    try:
+        result = subprocess.run(cmd, check=False, cwd=project_root)
+        if result.returncode == 0:
+            print_success("Setup completed successfully")
+            return True
+        else:
+            print_error(f"Setup failed with exit code {result.returncode}")
+            return False
+    except Exception as e:
+        print_error(f"Failed to run setup: {e}")
+        return False
+
+
+def run_ci():
+    """Run the CI checks"""
+    project_root = get_project_root()
+    ci_script = project_root / "bin" / "ci"
+
+    console.print()
+    print_info("Running CI checks...")
+    console.print()
+
+    if platform.system() == "Windows":
+        cmd = ["python", str(ci_script)]
+    else:
+        cmd = [str(ci_script)]
+
+    try:
+        result = subprocess.run(cmd, check=False, cwd=project_root)
+        if result.returncode == 0:
+            print_success("CI checks passed!")
+            return True
+        else:
+            print_warning("Some CI checks failed")
+            return False
+    except Exception as e:
+        print_error(f"Failed to run CI: {e}")
+        return False
+
+
+def main():
+    """Main reset function"""
+    # Header
+    show_banner("Project Reset\n Nuclear option - start completely fresh", style="yellow")
+
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Confirm with user
+        if not confirm_reset():
+            console.print()
+            print_info("Reset cancelled. Nothing was changed.")
+            sys.exit(0)
+
+        console.print()
+        show_banner("Starting reset...", style="red")
+
+        # Remove everything
+        if not remove_database():
+            sys.exit(1)
+
+        if not remove_venv():
+            sys.exit(1)
+
+        if not remove_env():
+            sys.exit(1)
+
+        console.print()
+        show_banner("Cleanup complete. Running fresh setup...", style="cyan")
+        console.print()
+
+        # Run setup
+        if not run_setup():
+            print_error("Setup failed! Check the errors above.")
+            sys.exit(1)
+
+        # Run CI
+        ci_success = run_ci()
+
+        # Final message
+        console.print()
+        if ci_success:
+            show_banner("Reset complete! Everything is working.", style="green")
+        else:
+            show_banner("Reset complete, but some CI checks failed.", style="yellow")
+            print_info("Check the output above for details")
+
+        console.print()
+
+    except KeyboardInterrupt:
+        console.print()
+        print_error("\nReset interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"\nUnexpected error during reset: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

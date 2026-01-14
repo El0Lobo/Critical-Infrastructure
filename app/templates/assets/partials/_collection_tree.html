@@ -1,0 +1,118 @@
+{% load setup_tags i18n %}
+
+{% with col=node.col id_str=node.col.id|stringformat:"s" %}
+  {% with c_base="assets.collection."|add:id_str c_actions="cms.assets.collection."|add:id_str|add:".actions" c_toolbar="cms.assets.collection."|add:id_str|add:".toolbar" %}
+
+    <section class="collection-group"
+             data-collection-id="{{ col.id }}"
+             data-col-title="{{ col.title|escapejs }}"
+             data-col-slug="{{ col.slug|escapejs }}"
+             data-col-visibility="{{ col.visibility_mode }}"
+             data-col-groups="{{ col.allowed_group_ids_csv }}"
+             data-col-parent="{{ col.parent.id|default_if_none:'' }}"
+             data-toggle-url="{% url 'api-collections-toggle-visibility' col.id %}"
+             data-update-url="{% url 'api-collections-detail' col.id %}"
+             data-delete-url="{% url 'api-collections-detail' col.id %}">
+
+      <header class="collection-header">
+        <div class="row-top" style="display:flex; align-items:center; gap:.75rem; width:100%;">
+          <div class="left nav-inline" style="position:relative; display:flex; align-items:center; gap:.5rem; min-width:0;">
+            <div class="title" data-collection-title style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              {{ col.title }}
+            </div>
+            {% if request.real_user and request.real_user.is_superuser %}
+              {% visibility_cog_inline "assets.collection."|add:id_str "Show/hide this collection" %}
+            {% endif %}
+          </div>
+          {# Row 2: Meta #}
+          <div class="meta" style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:.25rem;">
+            <span class="slug">{% trans "Slug:" %} <span class="slug" data-collection-slug>{{ col.slug }}</span></span>
+            <span class="tags" data-collection-tags style="display:flex; gap:.25rem; flex-wrap:wrap;">
+              {% for t in col.tags.all %}
+                <span class="tag">{{ t.name }}</span>
+              {% empty %}
+                <span class="tag tag-empty">{% trans "no tags" %}</span>
+              {% endfor %}
+            </span>
+          </div>
+          <div class="right nav-inline" style="position:relative; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; border:1px solid #0e634bff;border-radius:8px; padding:4px 6px; margin-left:auto;">
+            <span class="vis-pill vis-{{ col.visibility_mode }}">
+              {% if col.visibility_mode == 'groups' %}
+                Groups ({{ col.allowed_groups.count }})
+              {% else %}
+                {{ col.visibility_mode|title }}
+              {% endif %}
+            </span>
+
+            {# Grouped header actions: Toggle / Edit / Delete (one cog controlling the group) #}
+            {% if request.user.is_superuser or request.user|allow_for:c_actions %}
+                <div class="btn-group" style="display:inline-flex; gap:.35rem; border:1px solid #1b1f26; align-items:center; padding:4px 6px;">
+                  <button class="btn btn-outline-secondary btn-sm js-toggle-col-vis"
+                          title="{% trans 'Toggle Public/Internal' %}"
+                          data-url="{% url 'api-collections-toggle-visibility' col.id %}">
+                    Toggle
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm js-edit-collection"
+                          data-open-modal="#modal-collection-edit">
+                    Edit
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm js-collection-delete"
+                          data-url="{% url 'api-collections-detail' col.id %}">
+                    Delete
+                  </button>
+                </div>
+                {% if request.real_user and request.real_user.is_superuser %}
+                  {% visibility_cog_inline "cms.assets.collection."|add:id_str|add:".actions" "Show/hide header actions for this collection" %}
+                {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+
+      </header>
+
+      {# Bottom toolbar: + Add asset / + Add subcategory (grouped, one cog) #}
+      {% if request.user.is_superuser or request.user|allow_for:c_toolbar %}
+          <div class="col-toolbar nav-inline" style="position:relative; display:flex; justify-content:flex-end; gap:.5rem; padding:8px 12px; border-bottom:1px solid #1b1f26;">
+            <div class="btn-group" style="display:inline-flex; gap:.35rem; align-items:center;border:1px solid #0e634bff; padding:4px 6px;">
+              <button
+                class="btn btn-outline-primary btn-sm"
+                data-open-modal="#modal-asset"
+                data-collection="{{ col.id }}"
+                data-collection-title="{{ col.title|escapejs }}">
+                + Add asset here
+              </button>
+              <button
+                class="btn btn-outline-primary btn-sm"
+                data-open-modal="#modal-collection-new"
+                data-parent="{{ col.id }}"
+                data-parent-title="{{ col.title|escapejs }}">
+                + Add subcategory
+              </button>
+                          {% if request.real_user and request.real_user.is_superuser %}
+              {% visibility_cog_inline "cms.assets.collection."|add:id_str|add:".toolbar" "Show/hide add buttons for this collection" %}
+            {% endif %}
+            </div>
+
+          </div>
+      {% endif %}
+
+      {# Assets in this collection (asset-level hiding is inside the partials) #}
+      {% if view_mode == "list" %}
+        {% include "assets/partials/_list.html" with assets=node.assets %}
+      {% else %}
+        {% include "assets/partials/_grid.html" with assets=node.assets %}
+      {% endif %}
+
+      {# Children (recursive) #}
+      {% if node.children %}
+        <div class="collection-children" style="margin-left:14px; border-left:2px solid #0e634bff; padding-left:12px;">
+          {% for child in node.children %}
+            {% include "assets/partials/_collection_tree.html" with node=child view_mode=view_mode compact=compact %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  {% endwith %}
+
+{% endwith %}

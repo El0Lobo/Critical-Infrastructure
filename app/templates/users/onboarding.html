@@ -1,0 +1,17 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Welcome! Let's get you set up." %}</h1>
+<form method="post">
+  {% csrf_token %}
+  <fieldset>
+    <legend>{% trans "Choose a new password" %}</legend>
+    {{ pw_form.as_p }}
+  </fieldset>
+  <fieldset>
+    <legend>{% trans "Who can see your info?" %}</legend>
+    {{ vis_form.as_p }}
+  </fieldset>
+  <button class="btn btn-primary">{% trans "Save and continue" %}</button>
+</form>
+{% endblock %}

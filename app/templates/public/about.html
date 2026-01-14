@@ -1,0 +1,66 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}About — {{ site_settings.org_name }}{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+  <div class="card">
+    <h2>{% trans "About" %}</h2>
+    <p>
+      {% if site_settings.mode == 'VENUE' %}
+        {{ site_settings.org_name }} is a venue and community space. We host concerts, club nights, and more.
+      {% elif site_settings.mode == 'BAND' %}
+        {{ site_settings.org_name }} is a band/artist project. Welcome to our official site.
+      {% else %}
+        This is a personal site and news hub.
+      {% endif %}
+    </p>
+    {% if site_settings.logo %}
+      <p><img src="{{ site_settings.logo.url }}" alt="{{ site_settings.org_name }}" style="max-height:120px"></p>
+    {% endif %}
+  </div>
+
+  {# FIX: removed stray "if" and used site_settings.publish_opening_times #}
+  {% if site_settings.mode == 'VENUE' and site_settings.hours.all and site_settings.publish_opening_times %}
+  <div class="card">
+    <h2>{% trans "Opening Times" %}</h2>
+    <table class="table">
+      <thead>
+        <tr><th>{% trans "Day" %}</th><th>{% trans "Hours" %}</th></tr>
+      </thead>
+      <tbody>
+        {% for h in site_settings.hours.all %}
+          <tr>
+            <td>
+              {% with wd=h.weekday %}
+                {% if wd == 0 %}Monday
+                {% elif wd == 1 %}Tuesday
+                {% elif wd == 2 %}Wednesday
+                {% elif wd == 3 %}Thursday
+                {% elif wd == 4 %}Friday
+                {% elif wd == 5 %}Saturday
+                {% else %}Sunday
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              {% if h.closed %}
+                Closed
+              {% elif h.open_time and h.close_time %}
+                {{ h.open_time|time:"H:i" }} – {{ h.close_time|time:"H:i" }}
+              {% elif h.open_time %}
+                From {{ h.open_time|time:"H:i" }}
+              {% elif h.close_time %}
+                Until {{ h.close_time|time:"H:i" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans "Delete Item" %}</h1>
+<div class="alert alert-warning">
+  <strong>{% trans "Are you sure?" %}</strong> {% trans "This will permanently delete" %} <em>{{ item.name }}</em>.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <a class="btn btn-secondary" href="/cms/menu/">{% trans "Cancel" %}</a>  {# ← go to cms/menu/ #}
+  <button type="submit" class="btn btn-danger">{% trans "Yes, delete" %}</button>
+</form>
+{% endblock %}

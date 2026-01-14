@@ -1,0 +1,38 @@
+{% load i18n %}
+
+<form method="get" class="mb-2" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-end;">
+  <div>
+    <label class="tiny-legend">{% trans "Search" %}</label><br>
+    <input type="search" name="q" value="{{ q }}" placeholder="{% trans 'Subject or text…' %}" class="form-control" style="min-width:220px;">
+  </div>
+  <div>
+    <label class="tiny-legend">{% trans "Type" %}</label><br>
+    <select name="type" class="form-select">
+      <option value="">{% trans "All" %}</option>
+      <option value="internal" {% if t == "internal" %}selected{% endif %}>{% trans "Internal" %}</option>
+      <option value="email" {% if t == "email" %}selected{% endif %}>{% trans "Email" %}</option>
+    </select>
+  </div>
+  {% if accounts %}
+  <div>
+    <label class="tiny-legend">{% trans "Account" %}</label><br>
+    <select name="account" class="form-select">
+      <option value="">{% trans "All" %}</option>
+      {% for acc in accounts %}
+        <option value="{{ acc.slug }}" {% if account_slug == acc.slug %}selected{% endif %}>{{ acc.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div class="form-check" style="margin-top: 1.25rem;">
+    <input class="form-check-input" type="checkbox" name="unread" value="1" id="f-unread" {% if unread %}checked{% endif %}>
+    <label class="form-check-label" for="f-unread">{% trans "Unread only" %}</label>
+  </div>
+  <div class="form-check" style="margin-top: 1.25rem;">
+    <input class="form-check-input" type="checkbox" name="has_attachments" value="1" id="f-att" {% if has_attachments %}checked{% endif %}>
+    <label class="form-check-label" for="f-att">{% trans "With attachments" %}</label>
+  </div>
+  <div style="margin-left:auto;">
+    <button class="btn btn-secondary" type="submit">{% trans "Apply" %}</button>
+  </div>
+</form>

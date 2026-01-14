@@ -1,0 +1,1 @@
+:root{--bg:#fff7f5;--fg:#1a1a1a;--brand:#c73e2b;--border:#e6c7bf;--card:#fff;} body{background:var(--bg);color:var(--fg);} main{padding:2rem;} a{color:var(--brand);}

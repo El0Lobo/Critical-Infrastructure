@@ -1,0 +1,7 @@
+<ul class="checkbox-pills">
+  {% for group, options, index in widget.optgroups %}
+    {% for option in options %}
+      {% include widget.option_template_name with widget=option %}
+    {% endfor %}
+  {% endfor %}
+</ul>

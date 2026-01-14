@@ -1,0 +1,82 @@
+{% load setup_tags i18n %}
+{% include "events/partials/_form_errors.html" with form=event_form %}
+{{ performer_formset.management_form }}
+{% if performer_formset.non_form_errors %}
+  <div class="form-errors">
+    <ul>
+      {% for error in performer_formset.non_form_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% for hidden in event_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+<div class="event-modal-layout">
+  <div class="event-modal-sections">
+    {% for title, fields, opts in event_form.render_fieldsets %}
+      <details class="event-step">
+        <summary class="event-step-header">
+          <span class="step-number">{{ forloop.counter }}</span>
+          <span class="step-title">{{ title }}</span>
+          <span class="step-actions">
+          {% if title == "Visibility" %}
+            {% visibility_cog_inline 'cms.events.visibility' 'Event visibility' %}
+          {% elif title == "Shifts" %}
+            {% visibility_cog_inline 'cms.shifts.settings' 'Event shifts' %}
+          {% endif %}
+          </span>
+        </summary>
+        <div class="event-step-fields">
+          {% for field in fields %}
+            {% if field.name == 'standard_shifts' and event_form.standard_shift_count == 0 %}
+              <div class="form-field" data-field-name="standard_shifts">
+                <label>{% trans "Standard shifts" %}</label>
+                <p class="help">{% trans "No standard shifts defined yet. Head to the" %} <a href="{% url 'shifts:index' %}" target="_blank" rel="noopener">{% trans "Shift planner" %}</a> {% trans "to create them." %}</p>
+              </div>
+            {% else %}
+              {% include "events/partials/_field.html" with field=field %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+  <details class="event-step performers-step">
+    <summary class="event-step-header">
+      <span class="step-number">{% trans "P" %}</span>
+      <span class="step-title">{% trans "Performers" %}</span>
+      {% visibility_cog_inline 'cms.events.performers' 'Event performers' %}
+    </summary>
+    <div class="event-step-fields">
+      <table class="performer-table" data-performer-table>
+        <thead>
+          <tr>
+            <th>{% trans "Band" %}</th>
+            <th>{% trans "Quick add" %}</th>
+            <th>{% trans "Display name" %}</th>
+            <th>{% trans "Type" %}</th>
+            <th>{% trans "Slot start" %}</th>
+            <th>{% trans "Slot end" %}</th>
+            <th>{% trans "Order" %}</th>
+            <th>{% trans "Notes" %}</th>
+            <th>{% trans "Remove" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in performer_formset.forms %}
+            {% include "events/partials/_performer_row.html" with form=form %}
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="performer-empty-template">
+        {% include "events/partials/_performer_row.html" with form=performer_formset.empty_form %}
+      </template>
+      <div class="table-actions">
+        <button type="button" class="btn btn-outline" data-add-performer>{% trans "+ Add performer" %}</button>
+      </div>
+    </div>
+  </details>
+</div>

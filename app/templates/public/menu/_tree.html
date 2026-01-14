@@ -1,0 +1,31 @@
+{% load i18n %}
+{% with node as c %}
+  {% if c.items.exists %}
+    <h3 class="mt-3">{{ c.name }}</h3>
+    <ul class="list-unstyled">
+      {% for i in c.items.all %}
+        {% if i.visible_public and not i.is_sold_out %}
+          <li class="mb-2">
+            <strong>{{ i.name }}</strong>
+            {% if i.is_new %}<span class="badge bg-info text-dark">{% trans "New" %}</span>{% endif %}
+            {% if i.description %}<div class="text-muted">{{ i.description }}</div>{% endif %}
+            <div class="small">
+              {% for v in i.variants.all %}
+                <div>{{ v.label|default:v.quantity }} {{ v.unit.code }} — {% if v.price == 0 %}Free{% else %}€{{ v.price }}{% endif %}{% if v.abv %} · {{ v.abv }}% ABV{% endif %}</div>
+              {% endfor %}
+            </div>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if c.children.exists %}
+    <div class="ms-3">
+      {% for child in c.children.all %}
+        <h4 class="mt-3">{{ child.name }}</h4>
+        {% include 'public/menu/_tree.html' with node=child %}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}

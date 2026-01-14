@@ -1,0 +1,36 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}Settings · Site{% endblock %}
+{% block content %}
+<h1>{% trans "Site Settings" %}</h1>
+<form method="post" class="form">
+  {% csrf_token %}
+  <label>{% trans "Profile type" %}</label>
+  <select name="profile_type">
+    <option value="venue" {% if cfg.profile_type == 'venue' %}selected{% endif %}>{% trans "Venue" %}</option>
+    <option value="band" {% if cfg.profile_type == 'band' %}selected{% endif %}>{% trans "Band" %}</option>
+    <option value="news" {% if cfg.profile_type == 'news' %}selected{% endif %}>{% trans "News" %}</option>
+  </select>
+
+  <label>{% trans "Public theme" %}</label>
+  <select name="public_theme">
+    <option value="theme_a" {% if cfg.public_theme == 'theme_a' %}selected{% endif %}>{% trans "Theme A" %}</option>
+    <option value="theme_b" {% if cfg.public_theme == 'theme_b' %}selected{% endif %}>{% trans "Theme B" %}</option>
+    <option value="theme_c" {% if cfg.public_theme == 'theme_c' %}selected{% endif %}>{% trans "Theme C" %}</option>
+  </select>
+
+  <fieldset style="margin-top:1rem;">
+    <legend>{% trans "Feature visibility" %}</legend>
+    <label><input type="checkbox" name="ff_news" {% if cfg.feature_flags.news %}checked{% endif %}> {% trans "News" %}</label>
+    <label><input type="checkbox" name="ff_events" {% if cfg.feature_flags.events %}checked{% endif %}> {% trans "Events" %}</label>
+    <label><input type="checkbox" name="ff_merch" {% if cfg.feature_flags.merch %}checked{% endif %}> {% trans "Merch" %}</label>
+    <label><input type="checkbox" name="ff_pos" {% if cfg.feature_flags.pos %}checked{% endif %}> {% trans "POS" %}</label>
+    <label><input type="checkbox" name="ff_inventory" {% if cfg.feature_flags.inventory %}checked{% endif %}> {% trans "Inventory" %}</label>
+  </fieldset>
+
+  <div style="margin-top:1rem;">
+    <button class="btn" type="submit">{% trans "Save" %}</button>
+    <a class="btn" href="/cms/settings/">{% trans "Back" %}</a>
+  </div>
+</form>
+{% endblock %}

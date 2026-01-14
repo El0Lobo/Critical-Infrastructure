@@ -1,0 +1,600 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}Door · CMS{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{% trans "Door / Occupancy" %}</h1>
+  <div id="liveClock" class="clock" aria-live="polite"></div>
+</div>
+
+<style>
+  .door-demo * { box-sizing: border-box; }
+  .door-demo { --line:#243341; --text:#e9f1f2; --muted:#9fb2bf; --green:#35c46b; --red:#ff5566; }
+
+  /* -------- Counter (buttons left/right; centered) -------- */
+  .counter{ background:#0f1419; border:1px solid var(--line); border-radius:16px; padding:12px; margin:0 0 16px; }
+  .counter-grid{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; width:100%; }
+  .display-wrap{ display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; width:100%; }
+  .door-demo .btn{ background:#14202a; color:var(--text); border:1px solid var(--line); padding:.5rem .75rem; border-radius:10px; cursor:pointer; text-decoration:none; display:inline-flex; gap:.5rem; align-items:center; }
+  .door-demo .btn:hover{ background:#182733; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  /* Odometer */
+  .odometer{ display:flex; gap:6px; padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:#0b1116; box-shadow: inset 0 0 0 1px rgba(255,255,255,.03); }
+  .odo-digit{ position:relative; width:40px; height:56px; overflow:hidden; border:1px solid #1d2a36; border-radius:8px; background:linear-gradient(180deg,#0e141a,#0b1116); }
+  .odo-strip{ position:absolute; left:0; top:0; width:100%; will-change:transform; transition:transform .55s cubic-bezier(.2,.7,.2,1); }
+  .odo-num{ height:56px; display:flex; align-items:center; justify-content:center; font-size:2rem; line-height:1; color:var(--text); font-variant-numeric:tabular-nums; }
+
+  /* Tally (centered, wraps at ~80%, groups intact) + number pill */
+  .tally-wrap{ display:none; width:100%; }
+  .tally-board{ margin:0 auto; max-width:80%; display:flex; flex-wrap:wrap; gap:10px 12px; justify-content:center; align-items:center; }
+  .tally-group{ width:36px; height:60px; }
+  .tally-group svg{ width:36px; height:60px; display:block; }
+  .tally-legend{ display:none; margin-left:8px; padding:4px 8px; border:1px solid var(--line); border-radius:999px; background:#121820; color:#e9f1f2; font-size:.9rem; }
+
+  /* Doors */
+  .door-demo .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:12px 0 24px; }
+  @media (max-width:900px){ .door-demo .grid{ grid-template-columns:1fr; } }
+  .door-demo .panel{ background:#0f1419; border:1px solid var(--line); border-radius:16px; padding:16px; position:relative; overflow:visible !important; }
+  .door-demo .wrapper{ position:relative; height:300px; width:250px; perspective:1000px; margin-inline:auto; transform-style:preserve-3d; overflow:visible !important; }
+  .door-demo .wrapper .frame{ position:absolute; inset:0; border:5px solid #61412D; border-radius:10px; pointer-events:none; z-index:5; }
+  .door-demo .wrapper.in{ background:#0f3f22; }
+  .door-demo .wrapper.out{ background:#4a1520; }
+  .door-demo .wrapper .bg{ position:absolute; inset:0; opacity:.55; }
+  .door-demo .wrapper .bg img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .door-demo .door{ background:#61412D; height:100%; width:50%; position:absolute; display:flex; flex-direction:column; justify-content:space-around; align-items:center; }
+  .door-demo .left-door{ top:0; left:0; border-right:1px solid #000; transform-origin:left; transition:transform .5s; }
+  .door-demo .right-door{ top:0; right:0; border-left:1px solid #000; transform-origin:right; transition:transform .5s; }
+  .door-demo .shape{ border:4px solid #000; width:100px; height:130px; background:rgba(0,0,0,.06); }
+  .door-demo .knob{ width:10px; height:50px; background:#D7DADE; position:absolute; top:50%; }
+  .door-demo .left-knob{ right:10px; transform:translateY(-50%); }
+  .door-demo .right-knob{ left:10px; transform:translateY(-50%); }
+  .door-demo .door-label{ position:absolute; top:8px; left:10px; z-index:6; font-size:.85rem; letter-spacing:.08em; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.35); padding:4px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); }
+
+  /* Latched behavior --- */
+  /* IN: default closed; hover = small open; latched = fully open while hovered */
+  .door-demo .wrapper.in:hover .left-door  { transform: rotateY(-40deg); }
+  .door-demo .wrapper.in:hover .right-door { transform: rotateY(40deg); }
+  .door-demo .wrapper.in.latched .left-door  { transform: rotateY(-140deg); }
+  .door-demo .wrapper.in.latched .right-door { transform: rotateY(140deg); }
+
+  /* OUT: default fully open; hover = partly closed; latched = fully closed while hovered */
+  .door-demo .wrapper.out .left-door  { transform: rotateY(-140deg); }
+  .door-demo .wrapper.out .right-door { transform: rotateY(140deg); }
+  .door-demo .wrapper.out:hover .left-door  { transform: rotateY(-40deg); }
+  .door-demo .wrapper.out:hover .right-door { transform: rotateY(40deg); }
+  .door-demo .wrapper.out.latched .left-door,
+  .door-demo .wrapper.out.latched .right-door { transform: none; }
+
+  /* Collapsibles + list */
+  details.collapsible{ background:#0f1419; border:1px solid var(--line); border-radius:16px; margin:0 0 16px; overflow:hidden; }
+  details.collapsible summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-weight:600; color:var(--text); border-bottom:1px solid var(--line); }
+  .summary-icon{ width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; }
+  .summary-icon .ico-green{ color:var(--green); }
+  .summary-icon .ico-red{ color:var(--red); }
+  .collapsible .content{ padding:16px; }
+  .list{ display:flex; flex-direction:column; gap:10px; }
+  .row{ border:1px solid var(--line); border-radius:12px; padding:10px; display:grid; gap:8px; align-items:center; background:#0e1318; }
+  .row h6{ margin:0; font-size:1rem; color:var(--text); }
+  .muted{ color:var(--muted); font-size:.9rem; }
+  .field{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tag{ font-size:.8rem; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--text); background:#121820; }
+  .pill{ font-size:.8rem; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--text); background:#850928ff; }
+  .pill:hover{ scale:1.05; background:#850928ff; }
+  input[type="number"], input[type="text"], input[type="date"], select, textarea{ background:#0b1116; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; }
+  textarea{ min-height: 60px; }
+  #panelIn::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:0;pointer-events:none;background:linear-gradient(rgba(53,196,107,.05),rgba(53,196,107,.05)),repeating-linear-gradient(45deg,rgba(53,196,107,.12) 0 20px,rgba(53,196,107,.03) 20px 40px);}
+  #panelOut::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:0;pointer-events:none;background:linear-gradient(rgba(255,85,102,.05),rgba(255,85,102,.05)),repeating-linear-gradient(45deg,rgba(255,85,102,.12) 0 20px,rgba(255,85,102,.03) 20px 40px);}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+  .clock{font-variant-numeric:tabular-nums;color:var(--text);opacity:.85;background:#0f1419;border:1px solid var(--line);border-radius:10px;padding:.35rem .6rem;font-size:1.5rem;}
+
+  .adder{ margin-top:12px; padding:12px; border:1px dashed var(--line); border-radius:12px; display:grid; gap:10px; }
+  .adder-grid{ display:grid; gap:8px; align-items:center; }
+
+  /* Guestlist adder (name fills, number compact, + beside number and increments it) */
+  .adder-grid.guest{ grid-template-columns: 1fr auto auto; }
+  .adder-grid.guest #guestName{ width:100%; }
+  .adder-grid.guest #guestPlus{ width:68px; text-align:center; }
+  .adder-grid.guest .plus-icon{
+    width:32px; height:32px; border-radius:6px; border:1px solid var(--line);
+    display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:var(--text); background:#14202a;
+    user-select:none; cursor:pointer;
+  }
+  .door-demo .bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;scale1.2;}
+  .door-demo .bg-svg{width:100%;height:100%;max-width:90%;max-height:90%;object-fit:stretch;}
+
+  /* Banned adder layout */
+  .adder-grid.bad{ grid-template-columns: 1fr 1fr 1.2fr 1fr 1fr auto auto; } /* name, reason, desc, socials, duration, auto, add */
+  .switch{ display:inline-flex; align-items:center; gap:6px; }
+</style>
+
+<div class="door-demo" data-max-capacity="{{ max_capacity|default:'' }}">
+  <!-- Counter -->
+  <div class="counter">
+    <div class="counter-grid">
+      <button class="btn" id="minus" style="font-size: 2em;">−</button>
+
+      <div class="display-wrap">
+        <div id="odometer" class="odometer" aria-live="polite"></div>
+        <div id="tally" class="tally-wrap">
+          <div id="tallyBoard" class="tally-board"></div>
+        </div>
+      </div>
+
+      <button class="btn" id="plus" style="font-size: 2em;">+</button>
+    </div>
+
+    <div style="margin-top:10px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <button class="btn" id="toggleMode" type="button">{% trans "Switch to Tally" %}</button>
+      <span id="tallyNumber" class="tally-legend">0</span>
+      <button class="btn" id="resetCounter" type="button" title="{% trans 'Reset only the counter' %}">{% trans "Reset Counter" %}</button>
+      <span class="muted" id="capacityHint" {% if not max_capacity %}style="display:none;"{% endif %}>
+        {% if max_capacity %}Capacity: {{ max_capacity }}{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="grid">
+     
+    <!-- IN -->
+    <div class="panel" id="panelIn">
+      <span class="door-label">{% trans "IN" %}</span>
+      <div class="wrapper in" id="wrapIn">
+        <div class="bg">
+          <?xml version="1.0" encoding="utf-8"?>
+            <!-- Generator: Adobe Illustrator 26.3.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+            <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="800px" height="800px" viewBox="0 0 800 800" style="enable-background:new 0 0 800 800;max-height: 100%;" xml:space="preserve">
+
+            <path d="M232.7,198.6h305.3v400H232.7v-84.2h31.6v52.6h242.1V230.2H264.2v52.6h-31.6V198.6z M169.5,367.1H330l-86.8-73.7h105.3
+              l121.1,105.3L348.4,503.9H243.2l86.8-73.7H169.5V367.1z"/>
+            </svg>
+        </div>
+        <div class="door left-door"><div class="shape"></div><div class="shape"></div><div class="knob left-knob"></div></div>
+        <div class="door right-door"><div class="shape"></div><div class="shape"></div><div class="knob right-knob"></div></div>
+        <div class="frame"></div>
+      </div>
+    </div>
+
+    <!-- OUT -->
+    <div class="panel" id="panelOut">
+      <span class="door-label">{% trans "OUT" %}</span>
+      <div class="wrapper out" id="wrapOut">
+        <div class="bg">
+          <?xml version="1.0" encoding="utf-8"?>
+            <!-- Generator: Adobe Illustrator 26.3.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+            <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="800px" height="800px" viewBox="0 0 800 800" style="enable-background:new 0 0 800 800;max-height: 100%;" xml:space="preserve">
+            <path d="M536.8,200v84.2h-31.6v-52.6H263.2v336.8h242.1v-52.6h31.6V600H233.3l-1.8-400H536.8z M315.8,368.4h160.5l-86.8-73.7h105.3
+              L615.8,400L494.7,505.3H389.5l86.8-73.7H315.8V368.4z"/>
+            </svg>
+        </div>
+        <div class="door left-door"><div class="shape"></div><div class="shape"></div><div class="knob left-knob"></div></div>
+        <div class="door right-door"><div class="shape"></div><div class="shape"></div><div class="knob right-knob"></div></div>
+        <div class="frame"></div>
+      </div>
+    </div> 
+
+  </div>
+
+  <div class="toolbar" style="display:flex; justify-content:space-between; align-items:center; margin:0 0 8px;">
+    <a class="btn" href="#" id="resetAll">{% trans "Reset All" %}</a>
+    <small class="muted">{% trans "No backend — demo only." %}</small>
+  </div>
+
+  <!-- Guestlist -->
+  <details class="collapsible" open>
+    <summary>
+      <span class="summary-icon">
+        <svg class="ico-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <line x1="19" y1="8" x2="19" y2="14"/>
+          <line x1="16" y1="11" x2="22" y2="11"/>
+        </svg>
+      </span>
+      Guestlist
+    </summary>
+    <div class="content">
+      <div id="guestList" class="list"></div>
+
+      <div class="adder">
+        <div class="adder-grid guest">
+          <input id="guestName" type="text" placeholder="{% trans 'Guest name' %}">
+          <span id="guestPlusInc" class="plus-icon" title="{% trans 'Increase' %}">+</span>
+          <input id="guestPlus" type="number" min="0" max="20" value="0" aria-label="{% trans 'Additional people allowed' %}">
+        </div>
+        <div class="row-actions" style="margin-top:10px;">
+          <button class="btn" id="addGuest" type="button">{% trans "Add to Guestlist" %}</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Unwanted / Banned -->
+  <details class="collapsible">
+    <summary>
+      <span class="summary-icon">
+        <svg class="ico-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <line x1="5" y1="19" x2="19" y2="5"/>
+        </svg>
+      </span>
+      Unwanted / Banned
+    </summary>
+    <div class="content">
+      <div id="banList" class="list"></div>
+
+      <div class="adder">
+        <div class="adder-grid bad">
+          <input id="banName" type="text" placeholder="{% trans 'Name' %}">
+          <input id="banReason" type="text" placeholder="{% trans 'Reason' %}">
+          <input id="banDesc" type="text" placeholder="Description (optional)">
+          <input id="banSocials" type="text" placeholder="Known socials (optional)">
+          <select id="banDuration" title="{% trans 'Duration' %}">
+            <option value="" selected disabled>{% trans "Duration" %}</option>
+            <option value="1">{% trans "1 month" %}</option>
+            <option value="3">{% trans "3 months" %}</option>
+            <option value="6">{% trans "6 months" %}</option>
+            <option value="12">{% trans "12 months" %}</option>
+            <option value="forever">{% trans "Forever" %}</option>
+          </select>
+          <label class="switch" title="{% trans 'Auto-remove when expired' %}">
+            <input id="banAuto" type="checkbox"> <span>{% trans "Auto-remove when expired" %}</span>
+          </label>
+          <button class="btn" id="addBan" type="button">{% trans "Add to Unwanted" %}</button>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+  /* ===============================
+     Counter + Tally + Door Latching
+     =============================== */
+
+  /* --- State + element refs --- */
+  let count = 0;                             // current people in venue
+  let mode = 'odometer';                     // 'odometer' | 'tally'
+
+  const odoEl        = document.getElementById('odometer');
+  const tallyWrap    = document.getElementById('tally');
+  const tallyBoard   = document.getElementById('tallyBoard');
+  const toggleBtn    = document.getElementById('toggleMode');
+  const tallyNumber  = document.getElementById('tallyNumber');
+
+  const rootEl        = document.querySelector('.door-demo');
+  const MAX_CAPACITY  = rootEl && rootEl.dataset.maxCapacity
+    ? (Number(rootEl.dataset.maxCapacity) || null)
+    : null;
+  const capacityHint  = document.getElementById('capacityHint');
+  if (capacityHint && !MAX_CAPACITY) capacityHint.style.display = 'none';
+
+  const PLUS          = document.getElementById('plus');
+  const MINUS         = document.getElementById('minus');
+  const RESET_COUNTER = document.getElementById('resetCounter');
+
+  const cellH = 56;                          // odometer digit cell height (px)
+
+  /* --- UI helpers --- */
+  function updateMinusDisabled(){ MINUS.disabled = (count <= 0); }
+  function updatePlusDisabled(){
+    if (MAX_CAPACITY == null){
+      PLUS.disabled = false;
+      return;
+    }
+    PLUS.disabled = count >= MAX_CAPACITY;
+  }
+  function clamp(n){
+    let next = Math.max(0, n);
+    if (MAX_CAPACITY != null){
+      next = Math.min(MAX_CAPACITY, next);
+    }
+    return next;
+  }
+
+  /* Set + render the counter (clamped to ≥ 0) */
+  function setCount(n){
+    const next = clamp(n);
+    if (next === count && count === 0) { updateMinusDisabled(); updatePlusDisabled(); return; }
+    count = next;
+    if (mode === 'odometer') renderOdometer(count);
+    if (mode === 'tally')    { renderTally(count); tallyNumber.textContent = String(count); }
+    updateMinusDisabled();
+    updatePlusDisabled();
+  }
+
+  updateMinusDisabled();
+  updatePlusDisabled();
+
+  /* Build odometer columns (called when digit count changes) */
+  function buildOdometerColumns(digits){
+    odoEl.innerHTML = '';
+    for(let i=0;i<digits;i++){
+      const col = document.createElement('div'); col.className = 'odo-digit';
+      const strip = document.createElement('div'); strip.className = 'odo-strip';
+      for(let d=0; d<=9; d++){
+        const cell = document.createElement('div'); cell.className = 'odo-num'; cell.textContent = d;
+        strip.appendChild(cell);
+      }
+      col.appendChild(strip); odoEl.appendChild(col);
+    }
+  }
+
+  /* Render odometer to a number */
+  function renderOdometer(n){
+    const str = String(n);
+    const digits = Math.max(3, str.length);              // min 3 columns
+    if (odoEl.childElementCount !== digits) buildOdometerColumns(digits);
+    const padded = n.toString().padStart(digits,'0');
+    [...odoEl.children].forEach((col, i)=>{
+      const digit = Number(padded[i]);
+      col.firstElementChild.style.transform = `translateY(-${digit*cellH}px)`;
+    });
+  }
+
+  /* Render drawn tally marks (groups of 5) */
+  function renderTally(n){
+    tallyBoard.innerHTML = '';
+    const groups = Math.floor(n/5);
+    const rem = n % 5;
+
+    const jitter = (v,j)=> v + (Math.random()*j*2 - j);
+    const makeGroup = (cnt, slash=false)=>{
+      const w=36, h=60, yT=8, yB=h-8, s=4;
+      let svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+      const verts = Math.min(4, cnt);
+      for(let i=0;i<verts;i++){
+        const x = 8 + i*6;
+        svg += `<line x1="${jitter(x,.8)}" y1="${jitter(yT,1)}" x2="${jitter(x,.8)}" y2="${jitter(yB,1)}" stroke="#e9f1f2" stroke-width="${s}" stroke-linecap="round" />`;
+      }
+      if (slash){ svg += `<line x1="${jitter(6,1)}" y1="${jitter(yB-2,1)}" x2="${jitter(28,1)}" y2="${jitter(yT+2,1)}" stroke="#e9f1f2" stroke-width="${s}" stroke-linecap="round" />`; }
+      svg += `</svg>`;
+      const el = document.createElement('div'); el.className = 'tally-group'; el.innerHTML = svg; return el;
+    };
+
+    for(let g=0; g<groups; g++) tallyBoard.appendChild(makeGroup(5,true));
+    if (rem>0) tallyBoard.appendChild(makeGroup(rem,false));
+  }
+
+  /* --- Mode toggle --- */
+  function showOdometer(){
+    mode = 'odometer';
+    odoEl.style.display = 'flex';
+    tallyWrap.style.display = 'none';
+    tallyNumber.style.display = 'none';
+    toggleBtn.textContent = 'Switch to Tally';
+    renderOdometer(count);
+  }
+  function showTally(){
+    mode = 'tally';
+    odoEl.style.display = 'none';
+    tallyWrap.style.display = 'block';
+    tallyNumber.style.display = 'inline-block';
+    toggleBtn.textContent = 'Switch to Counter';
+    renderTally(count);
+    tallyNumber.textContent = String(count);
+  }
+  toggleBtn.addEventListener('click', ()=> mode==='odometer' ? showTally() : showOdometer());
+
+  /* --- Counter buttons (exactly ±1; not debounced) --- */
+  PLUS.addEventListener('click',  ()=> setCount(count+1));
+  MINUS.addEventListener('click', ()=> setCount(count-1));
+  RESET_COUNTER.addEventListener('click', ()=> setCount(0));
+
+  /* ============================
+     Guestlist / Unwanted helpers
+     ============================ */
+  const guestListEl = document.getElementById('guestList');
+  const banListEl   = document.getElementById('banList');
+  let guests = [];
+  let bans   = [];
+
+  /* Render guest rows */
+  function renderGuests(){
+    guestListEl.innerHTML = guests.length ? '' : '<div class="empty">No guests yet.</div>';
+    guests.forEach((g, idx) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.style.gridTemplateColumns = '1.2fr .8fr auto';
+      row.innerHTML = `
+        <h6>${escapeHtml(g.name)}</h6>
+        <div class="field"><span class="tag">+${g.plus}</span></div>
+        <div class="row-actions"><button class="pill" data-remove="${idx}">Remove</button></div>`;
+      guestListEl.appendChild(row);
+    });
+    guestListEl.querySelectorAll('[data-remove]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        guests.splice(+e.currentTarget.dataset.remove,1);
+        renderGuests();
+      });
+    });
+  }
+  /* Live clock (DD.MM.YYYY HH:MM:SS) */
+  function startClock(){
+    const el = document.getElementById('liveClock');
+    if(!el) return;
+    const pad = n => String(n).padStart(2,'0');
+    function tick(){
+      const d = new Date();
+      const dd = pad(d.getDate()), mm = pad(d.getMonth()+1), yy = d.getFullYear(); 
+      const hh = pad(d.getHours()), mi = pad(d.getMinutes()), ss = pad(d.getSeconds());
+      el.textContent = `${dd}.${mm}.${yy} ${hh}:${mi}:${ss}`;
+    }
+    tick();                          // paint immediately
+    window._clockTimer && clearInterval(window._clockTimer);
+    window._clockTimer = setInterval(tick, 1000);
+  }     
+  startClock();
+
+  /* Date helpers (DD.MM.YYYY, add months) */
+  function addMonths(date, months){
+    const d = new Date(date.getTime());
+    d.setMonth(d.getMonth()+months);
+    if (d.getDate() < date.getDate()) d.setDate(0);
+    return d;
+  }
+  function formatDMY(d){
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = d.getFullYear();
+    return `${dd}.${mm}.${yy}`;
+  }
+
+  /* Remove expired bans if autoRemove is on */
+  function purgeExpiredBans(){
+    const now = new Date();
+    bans = bans.filter(b => !(b.autoRemove && b.untilISO && new Date(b.untilISO) < now));
+  }
+
+  /* Render ban rows */
+  function renderBans(){
+    purgeExpiredBans();
+    banListEl.innerHTML = bans.length ? '' : '<div class="empty">No banned entries.</div>';
+    bans.forEach((b, idx) => {
+      const chips = [];
+      if (b.reason)       chips.push(`<span class="tag">Reason: ${escapeHtml(b.reason)}</span>`);
+      if (b.description)  chips.push(`<span class="tag">Desc: ${escapeHtml(b.description)}</span>`);
+      if (b.socials)      chips.push(`<span class="tag">Socials: ${escapeHtml(b.socials)}</span>`);
+      chips.push(`<span class="tag">Duration: ${b.duration === 'forever' ? 'Forever' : `${b.duration} month${b.duration==='1'?'':'s'}`}</span>`);
+      if (b.untilDMY)     chips.push(`<span class="tag">Until: ${escapeHtml(b.untilDMY)}</span>`);
+      if (b.autoRemove)   chips.push(`<span class="tag">Auto-remove</span>`);
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.style.gridTemplateColumns = '1fr 1fr auto';
+      row.innerHTML = `
+        <h6>${escapeHtml(b.name)}</h6>
+        <div class="field">${chips.join(' ')}</div>
+        <div class="row-actions"><button class="pill" data-remove-ban="${idx}">Remove</button></div>`;
+      banListEl.appendChild(row);
+    });
+    banListEl.querySelectorAll('[data-remove-ban]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        bans.splice(+e.currentTarget.dataset.removeBan,1);
+        renderBans();
+      });
+    });
+  }
+
+  /* --- Guest adder (the + beside input only bumps that input) --- */
+  const guestPlusInput = document.getElementById('guestPlus');
+  const guestPlusInc   = document.getElementById('guestPlusInc');
+  guestPlusInc.addEventListener('click', ()=>{
+    const cur = parseInt(guestPlusInput.value, 10) || 0;
+    if (cur < 20) guestPlusInput.value = cur + 1;
+  });
+  document.getElementById('addGuest').addEventListener('click', ()=>{
+    const name = document.getElementById('guestName').value.trim();
+    const plus = Math.max(0, Math.min(20, parseInt(guestPlusInput.value,10) || 0));
+    if(!name) return;
+    guests.push({ name, plus });
+    document.getElementById('guestName').value = '';
+    guestPlusInput.value = 0;
+    renderGuests();
+  });
+
+  /* --- Ban adder --- */
+  document.getElementById('addBan').addEventListener('click', ()=>{
+    const name = document.getElementById('banName').value.trim();
+    if(!name) return;
+    const reason = document.getElementById('banReason').value.trim();
+    const description = document.getElementById('banDesc').value.trim();
+    const socials = document.getElementById('banSocials').value.trim();
+    const duration = document.getElementById('banDuration').value;
+    const autoRemove = document.getElementById('banAuto').checked;
+
+    let untilISO = null, untilDMY = null;
+    if (duration && duration !== 'forever'){
+      const months = parseInt(duration,10);
+      if (!Number.isNaN(months) && months>0){
+        const untilDate = addMonths(new Date(), months);
+        untilISO = untilDate.toISOString().slice(0,10);
+        untilDMY = formatDMY(untilDate);
+      }
+    }
+
+    bans.push({ name, reason, description, socials, duration, untilISO, untilDMY, autoRemove });
+    document.getElementById('banName').value = '';
+    document.getElementById('banReason').value = '';
+    document.getElementById('banDesc').value = '';
+    document.getElementById('banSocials').value = '';
+    document.getElementById('banDuration').value = '';
+    document.getElementById('banAuto').checked = false;
+
+    renderBans();
+  });
+
+  /* --- Resets --- */
+  document.getElementById('resetCounter').addEventListener('click', ()=> setCount(0));
+  document.getElementById('resetAll').addEventListener('click', (e)=>{
+    e.preventDefault();
+    guests = []; bans = [];
+    setCount(0);
+    showOdometer();
+    renderGuests(); renderBans();
+  });
+
+  /* --- Safe text --- */
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  /* ====================
+     Init + Door behavior
+     ==================== */
+  (function init(){
+    /* Build odometer immediately so it's visible at 0 */
+    (function buildCols(){
+      const d = 3;
+      odoEl.innerHTML = '';
+      for (let i = 0; i < d; i++){
+        const c = document.createElement('div'); c.className = 'odo-digit';
+        const s = document.createElement('div'); s.className = 'odo-strip';
+        for (let n = 0; n <= 9; n++){
+          const cell = document.createElement('div'); cell.className = 'odo-num'; cell.textContent = n;
+          s.appendChild(cell);
+        }
+        c.appendChild(s); odoEl.appendChild(c);
+      }
+    })();
+    renderOdometer(0);
+    updateMinusDisabled();
+
+    /* --- Door click handling ---
+       Some setups can accidentally bind twice or emit multiple click events from nested elements.
+       We guard door clicks with a short debounce so one physical click = exactly one increment. */
+    const wrapIn  = document.getElementById('wrapIn');
+    const wrapOut = document.getElementById('wrapOut');
+
+    let lastDoorClickAt = 0;                  // ms timestamp of last accepted door click
+    const DOOR_DEBOUNCE_MS = 250;             // treat clicks within this window as duplicates
+
+    function safeAdjustFromDoor(delta){
+      const now = Date.now();
+      if (now - lastDoorClickAt < DOOR_DEBOUNCE_MS) return; // ignore duplicate
+      lastDoorClickAt = now;
+      setCount(count + delta);
+    }
+
+    /* Latch helper: click = latch for 2s or until hover leaves */
+    function addLatchBehavior(el, delta, autoMs = 2000){
+      const release = () => {
+        el.classList.remove('latched');
+        if (el._latchTimer){ clearTimeout(el._latchTimer); el._latchTimer = null; }
+      };
+      el.addEventListener('click', (e) => {
+        // Stop bubbling just in case parents also listen.
+        e.stopPropagation();
+        safeAdjustFromDoor(delta);              // exactly ±1 per physical click
+        el.classList.add('latched');            // enter latched pose
+        if (el._latchTimer) clearTimeout(el._latchTimer);
+        el._latchTimer = setTimeout(release, autoMs);  // auto-release after 2s
+      });
+      el.addEventListener('mouseleave', release);       // also release when leaving hover
+    }
+
+    addLatchBehavior(wrapIn,  +1);
+    addLatchBehavior(wrapOut, -1);
+  })();
+</script>
+
+{% endblock %}

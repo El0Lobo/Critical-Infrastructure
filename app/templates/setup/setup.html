@@ -1,0 +1,379 @@
+{% extends "cms/base_cms.html" %}
+{% load static setup_tags i18n %}
+{% block extra_head %}
+  {{ block.super }}
+  <style>
+    .btn-danger {
+      background: #a61d3e;
+      border-color: #a61d3e;
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #c6284f;
+      border-color: #c6284f;
+      color: #fff;
+    }
+  </style>
+{% endblock %}
+{% block content %}
+
+<div id="setup-root" class="stack-lg">
+
+  <div class="stack">
+    <h1 class="mb-0">{% trans "Setup" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.page' 'CMS Setup Page' target='.visibility-anchor' %}</span></h1>
+    <p class="lead-muted">{% blocktrans trimmed %}Configure global settings (address, socials, opening times, automations).{% endblocktrans %}</p>
+  </div>
+
+  <div id="setup-unsaved" class="alert alert-warning" role="status" hidden>
+    {% trans "You have unsaved changes. Remember to save before leaving this page." %}
+  </div>
+
+  <form method="post" action="" class="stack-lg" id="setup-form" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+        <!-- ===== Section: General ===== -->
+    <section class="card" data-collapsible-key="setup:general">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span><span class="sr-only">{% trans "Toggle section" %}</span></button>
+        {% trans "General" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.general' 'General' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        {{ form.non_field_errors }}
+        <div class="grid-2">
+          <div class="field field--full">{{ form.org_name.label_tag }} {{ form.org_name }}</div>
+          <div class="field">
+            {{ form.logo.label_tag }} {{ form.logo }}
+            {% with current=form.logo.field.widget.attrs.data_current %}
+              {% if current %}<p class="text-muted mb-0" aria-live="polite">Current: {{ current }}</p>{% endif %}
+            {% endwith %}
+
+          </div>
+          <div class="field">
+            {{ form.icon_pack.label_tag }} {{ form.icon_pack }}
+            {% if form.icon_pack.help_text %}
+              <p class="text-muted" style="margin:4px 0 0;">{{ form.icon_pack.help_text|safe }}</p>
+            {% endif %}
+            {% with current=form.icon_pack.field.widget.attrs.data_current %}
+              {% if current %}
+                <p class="text-muted mb-0" aria-live="polite">Current: {{ current }}</p>
+              {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="card card--seeding" data-collapsible-key="setup:seed">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span><span class="sr-only">{% trans "Toggle section" %}</span></button>
+        {% trans "Seeding tools" %} <small>{% trans "Backup or reset demo content" %}</small>
+      </h2>
+      <div class="card__body action-list">
+        <div class="action">
+          <p class="text-muted mb-0">{% blocktrans trimmed with filename="<code>seed_full.json</code>"|safe %}Dump the current database into {{ filename }}. Ideal after curating demo content.{% endblocktrans %}</p>
+          <button type="submit" name="op" value="seed_export" class="btn btn-secondary btn-sm" style="width:max-content;">{% trans "Generate seed_full.json" %}</button>
+        </div>
+        <div class="action">
+          <p class="text-muted mb-0"><strong>{% trans "Danger" %}:</strong> {% blocktrans trimmed with filename="<code>seed_full.json</code>"|safe %}This flushes the database, runs migrations, then loads {{ filename }}.{% endblocktrans %}</p>
+          <button type="submit" name="op" value="seed_reset" class="btn btn-danger btn-sm" style="width:max-content;" onclick="return confirm('{% trans "This will flush the database, run migrations, and load seed_full.json. Continue?" %}');">{% trans "Reset database from seed" %}</button>
+        </div>
+        <div class="action">
+          <p class="text-muted mb-0"><strong>{% trans "Danger" %}:</strong> {% trans "Flush everything and leave the schema empty (no users, no seed data)." %}</p>
+          <button type="submit" name="op" value="seed_clear" class="btn btn-danger btn-sm" style="width:max-content;" onclick="return confirm('{% trans "This will flush the database and run fresh migrations WITHOUT loading seed data. Continue?" %}');">{% trans "Clear database (empty)" %}</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" data-collapsible-key="setup:tunnel">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span><span class="sr-only">{% trans "Toggle section" %}</span></button>
+        {% trans "Cloudflare tunnel" %} <small>{% trans "Share this site temporarily" %}</small>
+      </h2>
+      <div class="card__body stack">
+        <p class="text-muted mb-0">
+          {% blocktrans trimmed %}Spins up cloudflared with a random trycloudflare.com URL and disables the dev login shortcut automatically.{% endblocktrans %}
+        </p>
+        {% if tunnel_url %}
+          <p class="text-success mb-0">{% trans "Active tunnel" %}: <a href="{{ tunnel_url }}" target="_blank" rel="noopener">{{ tunnel_url }}</a></p>
+        {% else %}
+          <p class="text-muted mb-0">{% trans "No tunnel is running." %}</p>
+        {% endif %}
+        <div class="action">
+          <button type="submit" name="op" value="tunnel_start" class="btn btn-primary btn-sm" {% if tunnel_running %}disabled{% endif %}>{% trans "Start tunnel" %}</button>
+          <button type="submit" name="op" value="tunnel_stop" class="btn btn-secondary btn-sm" {% if not tunnel_running %}disabled{% endif %}>{% trans "Stop tunnel" %}</button>
+        </div>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">{% trans "Requires the cloudflared CLI in PATH." %}</p>
+      </div>
+    </section>
+
+    <section class="card" data-collapsible-key="setup:languages">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span><span class="sr-only">{% trans "Toggle section" %}</span></button>
+        {% trans "Languages" %}
+      </h2>
+      <div class="card__body stack">
+        <p class="text-muted mb-0">{% blocktrans trimmed %}Choose which languages appear in both the public navigation and the CMS selector. Leaving everything unchecked keeps all configured languages available.{% endblocktrans %}</p>
+        <div class="field">
+          {{ form.enabled_languages.errors }}
+          {{ form.enabled_languages.label_tag }}
+          <div class="stack-sm" style="max-height:200px;overflow:auto;padding:.25rem .5rem;">
+            {{ form.enabled_languages }}
+          </div>
+          {% if form.enabled_languages.help_text %}
+            <p class="text-muted small mb-0">{{ form.enabled_languages.help_text }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Section: Address (venue & band) ===== -->
+    <section class="card only-venue only-band" data-collapsible-key="setup:address">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+        {% trans "Address" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.address' 'Address' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        <div class="address-ui address-ui--stacked stack">
+          <div class="field">
+            <label for="address-search">{% trans "Search & autofill" %}</label>
+            <input id="address-search" type="text" placeholder="{% trans 'Start typing an address' %}" data-geo-search autocomplete="off">
+            <p class="text-muted" style="margin:4px 0 0;">{% trans "Powered by OpenStreetMap Nominatim. Select a result to fill the address and coordinates." %}</p>
+            <div class="geo-suggestions" data-geo-results hidden></div>
+          </div>
+          <div class="field">{{ form.address_street.label_tag }} {{ form.address_street }}</div>
+          <div class="field">{{ form.address_number.label_tag }} {{ form.address_number }}</div>
+          <div class="field">{{ form.address_postal_code.label_tag }} {{ form.address_postal_code }}</div>
+          <div class="field">{{ form.address_city.label_tag }} {{ form.address_city }}</div>
+          <div class="field">{{ form.address_state.label_tag }} {{ form.address_state }}</div>
+
+          <div class="field">
+            <label for="country">{% trans "Country or region" %}</label>
+            <select id="country" name="{{ form.address_country.html_name }}" autocomplete="country" enterkeyhint="done">
+              <option value=""></option>
+              {% include "setup/partials/_countries_options.html" with selected=form.address_country.value %}
+            </select>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">{{ form.geo_lat.label_tag }} {{ form.geo_lat }}</div>
+            <div class="field">{{ form.geo_lng.label_tag }} {{ form.geo_lng }}</div>
+          </div>
+        </div>
+        <div class="address-save">
+          <button type="submit" name="save_scope" value="address" class="btn btn-primary btn-sm">
+            {% trans "Save address" %}
+          </button>
+          <p class="text-muted mb-0" style="font-size:0.9rem;">{% trans "Save just the address section without scrolling to the bottom." %}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Section: Socials & Contact ===== -->
+    <section class="card" data-collapsible-key="setup:socials">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+        {% trans "Socials & Contact" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.socials' 'Socials' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        <div class="grid-2">
+          <div class="field">{{ form.contact_email.label_tag }} {{ form.contact_email }}</div>
+          <div class="field">{{ form.contact_phone.label_tag }} {{ form.contact_phone }}</div>
+          <div class="field">{{ form.website_url.label_tag }} {{ form.website_url }}</div>
+          <div class="field">{{ form.social_facebook.label_tag }} {{ form.social_facebook }}</div>
+          <div class="field">{{ form.social_instagram.label_tag }} {{ form.social_instagram }}</div>
+          <div class="field">{{ form.social_twitter.label_tag }} {{ form.social_twitter }}</div>
+          <div class="field">{{ form.social_tiktok.label_tag }} {{ form.social_tiktok }}</div>
+          <div class="field">{{ form.social_youtube.label_tag }} {{ form.social_youtube }}</div>
+          <div class="field">{{ form.social_spotify.label_tag }} {{ form.social_spotify }}</div>
+          <div class="field">{{ form.social_soundcloud.label_tag }} {{ form.social_soundcloud }}</div>
+          <div class="field">{{ form.social_bandcamp.label_tag }} {{ form.social_bandcamp }}</div>
+          <div class="field">{{ form.social_linkedin.label_tag }} {{ form.social_linkedin }}</div>
+          <div class="field">{{ form.social_mastodon.label_tag }} {{ form.social_mastodon }}</div>
+        </div>
+        <div class="mt-2 field">
+          {{ form.same_as.label_tag }} {{ form.same_as }}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Section: Standards ===== -->
+    <section class="card only-venue only-band" data-collapsible-key="setup:schema">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+        {% trans "Standards" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.schema' 'Schema' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        <div class="grid-3">
+          <div class="field">{{ form.price_range.label_tag }} {{ form.price_range }}</div>
+               <div class="mt-2 field">
+          <label for="currency_text">{% trans "Currency" %}</label>
+          {{ form.currency_text }}
+          <datalist id="currency_list">
+            <option value="EUR"></option><option value="USD"></option><option value="GBP"></option><option value="CHF"></option>
+            <option value="JPY"></option><option value="CNY"></option><option value="CAD"></option><option value="AUD"></option>
+            <option value="SEK"></option><option value="NOK"></option><option value="DKK"></option><option value="PLN"></option>
+            <option value="CZK"></option><option value="HUF"></option><option value="RON"></option><option value="BGN"></option>
+            <option value="TRY"></option><option value="INR"></option><option value="BRL"></option><option value="MXN"></option><option value="ZAR"></option>
+          </datalist>
+          {{ form.default_currency.as_hidden }}
+          <small class="text-muted">{% trans "Pick a common currency or type your own. Defaults from timezone, fallback EUR." %}</small>
+        </div>
+        </div>
+
+
+
+
+        <div class="mt-3 field">
+          <label for="{{ form.maximum_attendee_capacity.id_for_label }}">{% trans "Max attendee capacity" %}</label>
+          {{ form.maximum_attendee_capacity }}
+          <small class="text-muted">{% blocktrans trimmed %}Schema: <code>Event.maximumAttendeeCapacity</code> (or <code>Place.maximumAttendeeCapacity</code> for the venue overall).{% endblocktrans %}</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Section: Policies & Accessibility (venue) ===== -->
+    <section class="card only-venue" data-collapsible-key="setup:policies">
+      <h2>
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+        {% trans "Policies & Accessibility" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.policies' 'Policies' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        <div class="grid-3">
+          <div class="field">
+            <label for="{{ form.smoking_allowed.id_for_label }}">{% trans "Smoking allowed?" %}</label>
+            {{ form.smoking_allowed }}
+            <small class="text-muted">{% blocktrans trimmed %}Schema: <code>Place.smokingAllowed</code>{% endblocktrans %}</small>
+          </div>
+          <div class="field">
+            <label for="{{ form.pets_allowed_text.id_for_label }}">{% trans "Pets" %}</label>
+            {{ form.pets_allowed_text }}
+            <small class="text-muted">{% trans "Examples: “dogs only”, “no pets”, blank = unspecified." %}</small>
+          </div>
+          <div class="field">
+            <label for="{{ form.typical_age_range.id_for_label }}">{% trans "Typical age range" %}</label>
+            {{ form.typical_age_range }}
+            <small class="text-muted">{% trans "Examples: “0-12”, “13+”, leave empty if not applicable." %}</small>
+          </div>
+        </div>
+
+        <div class="field mt-2">
+          <label for="{{ form.minors_policy_note.id_for_label }}">{% trans "Kids / Minors note" %}</label>
+          {{ form.minors_policy_note }}
+          <small class="text-muted">{% trans "Example: People under 16 only in company of an adult." %}</small>
+        </div>
+
+        <div class="mt-3">
+          <label>{% trans "Accessibility & inclusivity" %}</label>
+          <div class="grid-auto-3 mt-1">
+            <label>{{ form.acc_step_free }} {% trans "Step-free entrance" %}</label>
+            <label>{{ form.acc_wheelchair }} {% trans "Wheelchair accessible" %}</label>
+            <label>{{ form.acc_accessible_wc }} {% trans "Accessible restroom" %}</label>
+            <label>{{ form.acc_visual_aid }} {% trans "Visual assistance available" %}</label>
+            <label>{{ form.acc_service_animals }} {% trans "Service animals welcome" %}</label>
+            <label>{{ form.lgbtq_friendly }} {% trans "LGBTQIA+ friendly" %}</label>
+          </div>
+          <div class="field mt-2">
+            <label for="{{ form.accessibility_summary.id_for_label }}">{% trans "Accessibility notes (optional)" %}</label>
+            {{ form.accessibility_summary }}
+          </div>
+          <small class="text-muted">{% blocktrans trimmed %}Stored as <code>Place.amenityFeature</code> (LocationFeatureSpecification) and/or Event notes.{% endblocktrans %}</small>
+        </div>
+
+        <hr class="rule">
+
+        <div class="grid-2">
+          <div class="field">
+            <label>{{ form.awareness_team_available }} {% trans "Awareness team available" %}</label>
+            <div class="mt-1 field">
+              <label for="{{ form.awareness_contact.id_for_label }}">{% trans "Awareness contact" %}</label>
+              {{ form.awareness_contact }}
+              <small class="text-muted">{% trans "Phone, email, URL, or instruction. Leave empty to hide." %}</small>
+            </div>
+            <small class="text-muted">{% blocktrans trimmed %}Published via <code>Organization.contactPoint</code> with <code>contactType: \"safety\"</code> (only if provided).{% endblocktrans %}</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Section: Public Pages ===== -->
+
+    <section class="card" data-collapsible-key="setup:public-pages-toggle">
+
+      <h2>
+
+        <button type="button" class="collapse-toggle"><span class="chev">&#9656;</span></button>
+
+        {% trans "Public Pages" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.public' 'Public site' target='.visibility-anchor' %}</span>
+
+      </h2>
+
+
+
+      <div class="card__body stack">
+
+        <p class="text-muted mb-0">
+          {% trans "Enable the customer-facing site. Content and navigation now come entirely from the Pages app." %}
+        </p>
+
+        <label class="form-label checkbox" style="display:flex;align-items:center;gap:.4rem;">
+          {{ form.public_pages_enabled }} {% trans "Enable public pages" %}
+        </label>
+
+        <label class="form-label checkbox" style="display:flex;align-items:center;gap:.4rem;margin-top:.5rem;">
+          {{ form.dev_login_enabled }} {% trans "Show dev login shortcut (dev/test only)" %}
+        </label>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">{% trans "Disable before sharing preview links." %}</p>
+
+        <p class="mt-1 mb-0">
+
+          <a class="btn btn-xs btn-outline-secondary" href="/cms/pages/" target="_blank" rel="noopener">
+            {% trans "Manage pages" %}
+          </a>
+
+        </p>
+
+      </div>
+
+    </section>
+
+    <!-- ===== Section: Opening Times (venue only) ===== -->
+    <section class="card only-venue" data-collapsible-key="setup:opening">
+      <h2 style="display:flex; align-items:center; gap:.75rem;">
+        <button type="button" class="collapse-toggle"><span class="chev">▸</span></button>
+        Opening Times <span class="visibility-anchor">{% visibility_cog_inline 'cms.setup.opening' 'Opening Times' target='.visibility-anchor' %}</span>
+      </h2>
+      <div class="card__body stack">
+        <label style="margin-left:auto; display:flex; align-items:center; gap:.4rem; font-size:.95rem;">
+          {{ form.publish_opening_times }} Show publicly
+        </label>
+        {{ hours.management_form }}
+        <table class="table">
+          <tr><th>{% trans "Weekday" %}</th><th>{% trans "Closed" %}</th><th>{% trans "Opens" %}</th><th>{% trans "Closes" %}</th></tr>
+          {% for hf in hours %}
+            <tr>
+              {{ hf.id }} {{ hf.weekday }}
+              <td>
+                {% with wd=hf.instance.weekday %}
+                  {% if wd == 0 %}Monday{% elif wd == 1 %}Tuesday{% elif wd == 2 %}Wednesday{% elif wd == 3 %}Thursday{% elif wd == 4 %}Friday{% elif wd == 5 %}Saturday{% else %}Sunday{% endif %}
+                {% endwith %}
+              </td>
+              <td>{{ hf.closed }}</td>
+              <td>{{ hf.open_time }}</td>
+              <td>{{ hf.close_time }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+        <small class="text-muted">{% trans "Uncheck “Show publicly” to hide opening times on the public site. You can still edit them here." %}</small>
+      </div>
+    </section>
+
+    <div class="stack" style="grid-auto-flow: column; justify-content: start; gap: 8px;">
+      <button class="btn btn-primary" type="submit" name="save_scope" value="all">{% trans "Save Settings" %}</button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  <script src="{% static 'setup/setup.js' %}" defer></script>
+{% endblock %}

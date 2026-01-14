@@ -1,0 +1,2 @@
+{% load i18n %}
+{% for d in email_drafts %}<li>{{d.subject}}</li>{% empty %}<p>{% trans "No drafts" %}</p>{% endfor %}

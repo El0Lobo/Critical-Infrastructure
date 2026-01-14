@@ -1,0 +1,18 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Events {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Upcoming Events" %}</h2>
+<div class="grid">
+  {% for event in events %}
+    <article class="card">
+      <h3 style="margin:0">{{ event.title }}</h3>
+      <p class="muted">{{ event.start|date:"M d, Y H:i" }}{% if event.location %} · {{ event.location }}{% endif %}</p>
+      {% if event.summary %}<p>{{ event.summary }}</p>{% endif %}
+      <p><a href="{{ event.get_absolute_url }}">{% trans "Details" %}</a></p>
+    </article>
+  {% empty %}
+    <p class="muted">{% trans "No events yet." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

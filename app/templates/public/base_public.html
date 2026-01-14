@@ -1,0 +1,271 @@
+{% load static %}
+{% load i18n %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Bar OS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'public/site.css' %}">
+  {% if site_icon_links %}
+    {% for icon in site_icon_links %}
+      <link rel="{{ icon.rel|default:'icon' }}" href="{{ icon.href }}"{% if icon.type %} type="{{ icon.type }}"{% endif %}{% if icon.sizes %} sizes="{{ icon.sizes }}"{% endif %}>
+    {% endfor %}
+  {% endif %}
+  {% if page_theme_css %}
+    <style data-page-theme>{{ page_theme_css|safe }}</style>
+  {% endif %}
+  {% with custom_css=page_custom_css|default:page.custom_css %}
+    {% if custom_css %}
+      <style data-page-custom>{{ custom_css|safe }}</style>
+    {% endif %}
+  {% endwith %}
+  {% if structured_data %}
+    {% for payload in structured_data %}
+      <script type="application/ld+json">{{ payload|safe }}</script>
+    {% endfor %}
+  {% endif %}
+</head>
+<body>
+  <div class="site-shell">
+    {% block site_nav %}
+      {% if navigation_html %}
+        {{ navigation_html|safe }}
+      {% endif %}
+    {% endblock %}
+
+    <main class="site-main">
+      {% block content %}{% endblock %}
+    </main>
+  {% block after_main %}{% endblock %}
+  </div>
+  <script src="{% static 'public/lowpoly-bg.js' %}"></script>
+  <script src="{% static 'public/site.js' %}" defer></script>
+  <script>
+    (function () {
+      const THEMES = ["standard", "80s", "neobrutalism", "glass", "grunge", "tales", "y2k", "70s"];
+      const BACKGROUNDS = ["default", "lowpoly"];
+      const TEXTURES = ["none"];
+      const STORAGE_THEME = "cmsPublicTheme";
+      const STORAGE_BG = "cmsPublicBg";
+      const STORAGE_TEXTURE = "cmsPublicTexture";
+
+      const backgroundData = {};
+      const textureData = {};
+      function setSelectValue(select, value) {
+        if (!select) {
+          return false;
+        }
+        const options = Array.from(select.options || []);
+        if (options.some((opt) => opt.value === value)) {
+          select.value = value;
+          return true;
+        }
+        return false;
+      }
+
+      function safeStorage(getter) {
+        try {
+          return getter();
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function getStoredTheme() {
+        return safeStorage(() => window.localStorage.getItem(STORAGE_THEME));
+      }
+
+      function storeTheme(value) {
+        safeStorage(() => window.localStorage.setItem(STORAGE_THEME, value));
+      }
+
+      function getStoredBackground() {
+        return safeStorage(() => window.localStorage.getItem(STORAGE_BG));
+      }
+
+      function storeBackground(value) {
+        safeStorage(() => window.localStorage.setItem(STORAGE_BG, value));
+      }
+
+      function getStoredTexture() {
+        return safeStorage(() => window.localStorage.getItem(STORAGE_TEXTURE));
+      }
+
+      function storeTexture(value) {
+        safeStorage(() => window.localStorage.setItem(STORAGE_TEXTURE, value));
+      }
+
+      function refreshOptionData() {
+        Object.keys(backgroundData).forEach((key) => delete backgroundData[key]);
+        document.querySelectorAll("[data-theme-background] option").forEach((option) => {
+          if (option.dataset.bgUrl) {
+            backgroundData[option.value] = {
+              url: option.dataset.bgUrl,
+              size: option.dataset.bgSize || "cover",
+              blend: option.dataset.bgBlend || "normal",
+              opacity: option.dataset.bgOpacity || "1",
+              repeat: option.dataset.bgRepeat || "no-repeat",
+              position: option.dataset.bgPosition || "center",
+            };
+          }
+        });
+        Object.keys(textureData).forEach((key) => delete textureData[key]);
+        document.querySelectorAll("[data-theme-texture] option").forEach((option) => {
+          if (option.dataset.textureUrl) {
+            textureData[option.value] = {
+              url: option.dataset.textureUrl,
+              size: option.dataset.textureSize || "auto",
+              blend: option.dataset.textureBlend || "darken",
+              opacity: option.dataset.textureOpacity || "1",
+              repeat: option.dataset.textureRepeat || "repeat",
+            };
+          }
+        });
+      }
+
+      function applyTheme(value) {
+        const next = THEMES.includes(value) ? value : "standard";
+        if (document.body) {
+          if (next === "standard") {
+            document.body.removeAttribute("data-site-theme");
+          } else {
+            document.body.setAttribute("data-site-theme", next);
+          }
+        }
+        storeTheme(next);
+        return next;
+      }
+
+      function enableLowpoly() {
+        if (window.runLowpoly) {
+          window.runLowpoly();
+        }
+      }
+
+      function disableLowpoly() {
+        if (window.stopLowpoly) {
+          window.stopLowpoly();
+        }
+      }
+
+      function applyBackground(value) {
+        const entry = backgroundData[value];
+        if (entry) {
+          document.body.setAttribute("data-site-bg", "custom");
+          const root = document.documentElement;
+          root.style.setProperty("--site-bg-image", `url("${entry.url}")`);
+          root.style.setProperty("--site-bg-image-size", entry.size);
+          root.style.setProperty("--site-bg-image-blend", entry.blend);
+          root.style.setProperty("--site-bg-image-opacity", entry.opacity);
+          root.style.setProperty("--site-bg-image-repeat", entry.repeat);
+          root.style.setProperty("--site-bg-image-position", entry.position);
+          disableLowpoly();
+          storeBackground(value);
+          return value;
+        }
+        const next = BACKGROUNDS.includes(value) ? value : "default";
+        const root = document.documentElement;
+        root.style.removeProperty("--site-bg-image");
+        root.style.removeProperty("--site-bg-image-size");
+        root.style.removeProperty("--site-bg-image-blend");
+        root.style.removeProperty("--site-bg-image-opacity");
+        root.style.removeProperty("--site-bg-image-repeat");
+        root.style.removeProperty("--site-bg-image-position");
+        if (next === "default") {
+          document.body.removeAttribute("data-site-bg");
+        } else {
+          document.body.setAttribute("data-site-bg", next);
+        }
+        if (next === "lowpoly") {
+          enableLowpoly();
+        } else {
+          disableLowpoly();
+        }
+        storeBackground(next);
+        return next;
+      }
+
+      function applyTexture(value) {
+        const entry = textureData[value];
+        if (entry) {
+          document.body.setAttribute("data-site-texture", "custom");
+          const root = document.documentElement;
+          root.style.setProperty("--site-texture-image", `url("${entry.url}")`);
+          root.style.setProperty("--site-texture-size", entry.size);
+          root.style.setProperty("--site-texture-blend", entry.blend);
+          root.style.setProperty("--site-texture-opacity", entry.opacity);
+          root.style.setProperty("--site-texture-repeat", entry.repeat);
+          storeTexture(value);
+          return value;
+        }
+        const next = TEXTURES.includes(value) ? value : "none";
+        const root = document.documentElement;
+        root.style.removeProperty("--site-texture-image");
+        root.style.removeProperty("--site-texture-size");
+        root.style.removeProperty("--site-texture-blend");
+        root.style.removeProperty("--site-texture-opacity");
+        root.style.removeProperty("--site-texture-repeat");
+        if (next === "none") {
+          document.body.removeAttribute("data-site-texture");
+        } else {
+          document.body.setAttribute("data-site-texture", next);
+        }
+        storeTexture(next);
+        return next;
+      }
+
+      refreshOptionData();
+      const initialTheme = getStoredTheme();
+      const appliedTheme = applyTheme(initialTheme || "standard");
+      const appliedBackground = applyBackground(getStoredBackground() || "default");
+      const appliedTexture = applyTexture(getStoredTexture() || "none");
+
+      document.addEventListener("DOMContentLoaded", function () {
+        refreshOptionData();
+        const themeSelects = Array.from(document.querySelectorAll("[data-theme-switcher]"));
+        const bgSelects = Array.from(document.querySelectorAll("[data-theme-background]"));
+        const textureSelects = Array.from(document.querySelectorAll("[data-theme-texture]"));
+
+        const currentTheme = appliedTheme || "standard";
+        themeSelects.forEach((select) => {
+          if (!setSelectValue(select, currentTheme)) {
+            setSelectValue(select, "standard");
+          }
+          select.addEventListener("change", function (event) {
+            applyTheme(event.target.value);
+          });
+        });
+
+        const currentBg = appliedBackground || "default";
+        bgSelects.forEach((select) => {
+          if (!setSelectValue(select, currentBg)) {
+            if (!BACKGROUNDS.some((name) => setSelectValue(select, name))) {
+              if (select.options.length) {
+                select.selectedIndex = 0;
+              }
+            }
+          }
+          select.addEventListener("change", function (event) {
+            applyBackground(event.target.value);
+          });
+        });
+
+        const currentTexture = appliedTexture || "none";
+        textureSelects.forEach((select) => {
+          if (!setSelectValue(select, currentTexture)) {
+            setSelectValue(select, "none");
+          }
+          select.addEventListener("change", function (event) {
+            applyTexture(event.target.value);
+          });
+        });
+      });
+    })();
+  </script>
+  {% with custom_js=page_custom_js|default:page.custom_js %}
+    {% if custom_js %}
+      <script data-page-custom>{{ custom_js|safe }}</script>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>

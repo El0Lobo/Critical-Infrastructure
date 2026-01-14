@@ -1,0 +1,125 @@
+{% load static %}
+{% load i18n %}
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CMS{% endblock %}</title>
+
+  <link rel="stylesheet" href="{% static 'cms/cms.css' %}?v=2">
+  <script src="{% static 'cms/cms.js' %}" defer></script>
+  <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+  {% if site_icon_links %}
+    {% for icon in site_icon_links %}
+      <link rel="{{ icon.rel|default:'icon' }}" href="{{ icon.href }}"{% if icon.type %} type="{{ icon.type }}"{% endif %}{% if icon.sizes %} sizes="{{ icon.sizes }}"{% endif %}>
+    {% endfor %}
+  {% endif %}
+
+  {# Hide skip link by default; show on focus for accessibility #}
+  <style>
+    .skip-link {
+      position: absolute;
+      left: -10000px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+    .skip-link:focus {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+      width: auto;
+      height: auto;
+      padding: .5rem .75rem;
+      background: #111;
+      color: #fff;
+      border-radius: 6px;
+      z-index: 10000;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+{% if site_settings.logo %}
+  {% with logo_bg=site_settings.logo.url %}
+    <body class="cms {% if request.user.is_superuser %}role-superuser{% else %}role-user{% endif %} cms-logo-bg"
+    style="--cms-logo-bg: url('{{ logo_bg }}');">
+  {% endwith %}
+{% else %}
+  <body class="cms {% if request.user.is_superuser %}role-superuser{% else %}role-user{% endif %}">
+{% endif %}
+  <a href="#main" class="skip-link">{% trans "Skip to content" %}</a>
+
+  {# --- Impersonation banner --- #}
+  {% if request.impersonating %}
+    <div class="impersonation-banner" role="status" aria-live="polite" style="background:#ffd966; color:#222; padding:.7rem .75rem; right: 0; z-index: 10000; position: fixed; display:flex; gap:.5rem; align-items:center;">
+      <strong>{% trans "Impersonating" %}:</strong>
+      <span>{{ request.user.get_username }}</span>
+      <span style="margin-left:auto;">
+        <a href="{% url 'users:impersonate_stop' %}" class="btn btn-sm btn-outline-dark">{% trans "Stop" %}</a>
+      </span>
+    </div>
+  {% endif %}
+ 
+  <!-- mobile overlay -->
+  <div class="backdrop" data-nav-close></div>
+
+  <aside id="cmsSide" class="cms-nav" role="navigation" aria-label="{% trans 'CMS' %}">
+    <div class="cms-nav__inner">
+      {% include "cms/nav.html" %}
+    </div>
+  </aside>
+
+  <main id="main" class="cms-main">
+    <header class="cms-top">
+      <div class="left">
+        <button id="navToggle" class="iconbtn" aria-label="{% trans 'Toggle menu' %}" aria-controls="cmsSide" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
+        <a class="brand" href="/">{% trans "Bar OS" %}</a>
+      </div>
+      <div class="right">
+        {# Language switcher #}
+        {% if enabled_languages|length > 1 %}
+          {% include "common/language_switcher.html" with switcher_class="lang-switcher--cms" switcher_id="lang-switcher-cms" %}
+        {% endif %}
+
+        {% if user.is_staff or perms.rosetta.can_translate %}
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'rosetta-file-list' po_filter='project' %}" target="_blank" rel="noopener">
+            {% trans "Translations" %}
+          </a>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'logout' %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="linklike">{% trans "Logout" %}</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}">{% trans "Login" %}</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if messages %}
+      <div class="messages" style="padding:8px 12px;">
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}" role="alert" style="margin:.25rem 0;">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="cms-content">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+
+  {% block extra_body %}{% endblock %}
+</body>
+</html>

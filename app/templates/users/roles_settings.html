@@ -1,0 +1,69 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<div class="stack">
+  <header class="page-header">
+    <h1>{% trans "Roles & groups" %}</h1>
+    <p class="text-muted mb-0">{% trans "Create or rename Django groups used across the site." %}</p>
+  </header>
+  <section class="card">
+    <div class="card__body stack">
+      <form method="post">
+        {% csrf_token %}
+        {{ roles.management_form }}
+        <table class="table" id="roles-table">
+          <tr>
+            <th>{% trans "Name" %}</th>
+            <th>{% trans "Actions" %}</th>
+          </tr>
+          {% for rf in roles %}
+            <tr class="role-form">
+              {{ rf.id }}
+              <td>{{ rf.name }}</td>
+              <td>
+                <span style="display:none;">{{ rf.DELETE }}</span>
+                <button type="button" class="btn btn-danger" onclick="usersMarkRoleDeleted(this)">{% trans "Delete" %}</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+        <div class="d-flex gap-2 mt-3">
+          <button type="button" class="btn btn-secondary" id="add-role">+ {% trans "Add role" %}</button>
+          <button type="submit" class="btn btn-primary ms-auto">{% trans "Save changes" %}</button>
+          <a class="btn btn-outline-secondary" href="{% url 'users:index' %}">{% trans "Back to users" %}</a>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  <script>
+    (function () {
+      window.usersMarkRoleDeleted = function (button) {
+        const row = button.closest("tr");
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+          deleteInput.checked = true;
+        }
+        row.style.display = "none";
+      };
+      const addBtn = document.getElementById("add-role");
+      if (!addBtn) return;
+      addBtn.addEventListener("click", function () {
+        const form = addBtn.closest("form");
+        const totalInput = form.querySelector('input[name="{{ roles.prefix }}-TOTAL_FORMS"]');
+        const table = form.querySelector("table");
+        const total = parseInt(totalInput.value, 10);
+        const template = `{{ roles.empty_form.as_table|escapejs }}`;
+        const wrapper = document.createElement("tbody");
+        wrapper.innerHTML = template.replace(/__prefix__/g, total);
+        const newRow = wrapper.querySelector("tr") || wrapper;
+        table.appendChild(newRow);
+        totalInput.value = total + 1;
+      });
+    })();
+  </script>
+{% endblock %}

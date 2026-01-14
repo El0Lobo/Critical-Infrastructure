@@ -1,0 +1,101 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+
+{% block content %}
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h1 style="margin:0;">{{ title|default:"User" }}</h1>
+    <div style="display:flex;gap:.5rem;">
+      <a href="{% url 'users:index' %}" class="btn btn-light">{% trans "Back" %}</a>
+      <a href="{% url 'users:badges_list' %}" class="btn btn-outline-secondary">{% trans "Manage badges" %}</a>
+    </div>
+  </div>
+
+  <form method="post" style="margin-top:12px;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Account" %}</strong>
+        <div class="mt-2">
+          {% if form.username %}<div class="mb-2">{{ form.username.label_tag }} {{ form.username }}</div>{% endif %}
+          {% if form.email %}<div class="mb-2">{{ form.email.label_tag }} {{ form.email }}</div>{% endif %}
+          {% if form.temp_password %}<div class="mb-2">{{ form.temp_password.label_tag }} {{ form.temp_password }}
+            <small class="text-muted d-block">{{ form.temp_password.help_text }}</small></div>{% endif %}
+          {% if form.is_active %}<div class="mb-2">{{ form.is_active.label_tag }} {{ form.is_active }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Groups" %}</strong>
+        <div class="mt-2">
+          {{ form.groups.label_tag }} {{ form.groups }}
+          {% if form.groups.errors %}<div class="text-danger small">{{ form.groups.errors }}</div>{% endif %}
+
+          {{ form.new_group_name.label_tag }} {{ form.new_group_name }}
+          <small class="text-muted d-block">{{ form.new_group_name.help_text }}</small>
+          {% if form.new_group_name.errors %}<div class="text-danger small">{{ form.new_group_name.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Identity" %}</strong>
+        <div class="mt-2">
+          {% if form.legal_name %}<div class="mb-2">{{ form.legal_name.label_tag }} {{ form.legal_name }}</div>{% endif %}
+          {% if form.chosen_name %}<div class="mb-2">{{ form.chosen_name.label_tag }} {{ form.chosen_name }}</div>{% endif %}
+          {% if form.pronouns %}<div class="mb-2">{{ form.pronouns.label_tag }} {{ form.pronouns }}</div>{% endif %}
+          {% if form.birth_date %}<div class="mb-2">{{ form.birth_date.label_tag }} {{ form.birth_date }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Contact" %}</strong>
+        <div class="mt-2">
+          {% if form.phone %}<div class="mb-2">{{ form.phone.label_tag }} {{ form.phone }}</div>{% endif %}
+          {% if form.address %}<div class="mb-2">{{ form.address.label_tag }} {{ form.address }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Role & Duties" %}</strong>
+        <div class="mt-2">
+          {% if form.role_title %}
+            <div class="mb-2">
+              {{ form.role_title.label_tag }} {{ form.role_title }}
+              {% if form.role_title.errors %}<div class="text-danger small">{{ form.role_title.errors }}</div>{% endif %}
+            </div>
+          {% endif %}
+          {% if form.duties %}<div class="mb-2">{{ form.duties.label_tag }} {{ form.duties }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);">
+        <strong>{% trans "Badges" %}</strong>
+        <div class="mt-2">
+          {% if form.badges %}
+            <div class="badge-grid">
+              {{ form.badges }}
+            </div>
+            <small class="text-muted d-block" style="margin-top:.25rem;">
+              Hover a badge on user cards to see its description (e.g. 🔑 Has Key).
+            </small>
+            {% if form.badges.errors %}<div class="text-danger small">{{ form.badges.errors }}</div>{% endif %}
+          {% else %}
+            <em class="text-muted">{% trans "No badges available." %}</em>
+          {% endif %}
+          <div style="margin-top:.5rem;">
+            <a href="{% url 'users:badges_list' %}" class="btn btn-sm btn-outline-secondary">{% trans "Manage badges" %}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px; display:flex; gap:.5rem; justify-content:flex-end;">
+      <button class="btn btn-primary" type="submit">{% trans "Save" %}</button>
+    </div>
+  </form>
+{% endblock %}

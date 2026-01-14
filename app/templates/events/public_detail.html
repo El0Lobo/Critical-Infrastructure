@@ -1,0 +1,12 @@
+{% extends "base_public.html" %}
+{% load i18n %}
+{% block title %}{{ event.title }} · Event{% endblock %}
+{% block content %}
+  <article itemscope itemtype="https://schema.org/Event">
+    <h1 itemprop="name">{{ event.title }}</h1>
+    <p><strong>{% trans "Date:" %}</strong> <time itemprop="startDate" datetime="{{ event.date }}">{{ event.date }}</time></p>
+    <p><strong>{% trans "Where:" %}</strong> <span itemprop="location" itemscope itemtype="https://schema.org/Place"><span itemprop="name">{% trans "Your Bar" %}</span></span></p>
+    <p><strong>{% trans "Price:" %}</strong> <span itemprop="offers" itemscope itemtype="https://schema.org/Offer"><span itemprop="price">{{ event.price }}</span></span></p>
+    <p>{% trans "Social/share and tickets would be here later." %}</p>
+  </article>
+{% endblock %}

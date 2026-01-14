@@ -1,0 +1,7 @@
+{% extends "base_public.html" %}
+{% load i18n %}
+{% block title %}Home · Bar OS{% endblock %}
+{% block content %}
+  <h1>{% trans "Welcome" %}</h1>
+  <p>{% trans "Public-facing skeleton is up. Try the" %} <a href="{% url 'theme_demo' %}">{% trans "Theme Test Page" %}</a> {% trans "or" %} <a href="/events/">{% trans "Events" %}</a>.</p>
+{% endblock %}

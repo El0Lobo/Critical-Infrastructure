@@ -1,0 +1,72 @@
+{% load i18n %}
+<table class="table">
+  <tr>
+    <th>
+      <a
+        hx-get="{% url 'setup:visibility_list' %}?q={{ q|urlencode }}&sort=key{% if sort == 'key' and direction != 'desc' %}&dir=desc{% endif %}"
+        hx-target="#rules-table" hx-push-url="true">
+        Key {% if sort == 'key' %}{% if direction == 'desc' %}▼{% else %}▲{% endif %}{% endif %}
+      </a>
+    </th>
+
+    {# NEW: Group (derived from key: cms.<group>.*) #}
+    <th>
+      <a
+        hx-get="{% url 'setup:visibility_list' %}?q={{ q|urlencode }}&sort=group{% if sort == 'group' and direction != 'desc' %}&dir=desc{% endif %}"
+        hx-target="#rules-table" hx-push-url="true">
+        Group {% if sort == 'group' %}{% if direction == 'desc' %}▼{% else %}▲{% endif %}{% endif %}
+      </a>
+    </th>
+
+    <th>
+      <a
+        hx-get="{% url 'setup:visibility_list' %}?q={{ q|urlencode }}&sort=label{% if sort == 'label' and direction != 'desc' %}&dir=desc{% endif %}"
+        hx-target="#rules-table" hx-push-url="true">
+        Label {% if sort == 'label' %}{% if direction == 'desc' %}▼{% else %}▲{% endif %}{% endif %}
+      </a>
+    </th>
+
+    <th>
+      <a
+        hx-get="{% url 'setup:visibility_list' %}?q={{ q|urlencode }}&sort=is_enabled{% if sort == 'is_enabled' and direction != 'desc' %}&dir=desc{% endif %}"
+        hx-target="#rules-table" hx-push-url="true">
+        Enabled {% if sort == 'is_enabled' %}{% if direction == 'desc' %}▼{% else %}▲{% endif %}{% endif %}
+      </a>
+    </th>
+
+    <th>{% trans "Groups (allowed)" %}</th>
+
+    <th>
+      <a
+        hx-get="{% url 'setup:visibility_list' %}?q={{ q|urlencode }}&sort=notes{% if sort == 'notes' and direction != 'desc' %}&dir=desc{% endif %}"
+        hx-target="#rules-table" hx-push-url="true">
+        Notes {% if sort == 'notes' %}{% if direction == 'desc' %}▼{% else %}▲{% endif %}{% endif %}
+      </a>
+    </th>
+
+    <th>{% trans "Actions" %}</th>
+  </tr>
+
+  {% for r in rules %}
+    <tr>
+      <td><code>{{ r.key }}</code></td>
+      <td>{{ r.group_name|default:"—" }}</td>  {# show derived group #}
+      <td>{{ r.label }}</td>
+      <td>{{ r.is_enabled }}</td>
+      <td>
+        {% for g in r.allowed_groups.all %}
+          {{ g.name }}{% if not forloop.last %}, {% endif %}
+        {% empty %}
+          <em>{% trans "None" %}</em>
+        {% endfor %}
+      </td>
+      <td>{{ r.notes }}</td>
+      <td>
+        <a class="btn btn-secondary" href="{% url 'setup:visibility_edit' %}?key={{ r.key|urlencode }}">{% trans "Edit" %}</a>
+        <a class="btn btn-danger" href="{% url 'setup:visibility_delete' r.id %}" onclick="return confirm('Delete rule?');">{% trans "Delete" %}</a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7"><em>{% trans "No rules found." %}</em></td></tr>
+  {% endfor %}
+</table>

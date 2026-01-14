@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""
+Test Runner - Django tests or pytest
+Platform-agnostic test runner for Windows, Linux, and macOS
+"""
+import os
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    console,
+    print_header,
+    print_success,
+    print_error,
+    print_info,
+    print_warning,
+    get_project_root,
+    get_venv_python,
+    check_virtualenv,
+    run_command,
+)
+
+
+def has_pytest() -> bool:
+    """Check if pytest is installed"""
+    venv_python = get_venv_python()
+    result = run_command([str(venv_python), "-c", "import pytest"], check=False, capture_output=True)
+    return result.returncode == 0
+
+
+def run_pytest(args: list):
+    """Run tests using pytest"""
+    venv_python = get_venv_python()
+
+    # Default pytest args if none provided
+    if not args:
+        args = []
+
+    cmd = [str(venv_python), "-m", "pytest"] + args
+
+    print_header("Running Tests", "Using pytest")
+    if args:
+        print_info(f"Arguments: {' '.join(args)}")
+    else:
+        print_info("Running all tests")
+    console.print()
+
+    try:
+        result = run_command(cmd, check=False)
+        console.print()
+        if result.returncode == 0:
+            print_success("All tests passed!")
+        else:
+            print_error(f"Tests failed with exit code {result.returncode}")
+        sys.exit(result.returncode)
+
+    except KeyboardInterrupt:
+        console.print()
+        print_warning("Tests interrupted by user")
+        sys.exit(130)
+
+
+def run_django_tests(args: list):
+    """Run tests using Django's test runner"""
+    venv_python = get_venv_python()
+    manage_py = get_project_root() / "manage.py"
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    cmd = [str(venv_python), str(manage_py), "test"] + args
+
+    print_header("Running Tests", "Using Django test runner")
+    if args:
+        print_info(f"Test arguments: {' '.join(args)}")
+    else:
+        print_info("Running all tests")
+    console.print()
+
+    try:
+        result = run_command(cmd, check=False)
+        console.print()
+        if result.returncode == 0:
+            print_success("All tests passed!")
+        else:
+            print_error(f"Tests failed with exit code {result.returncode}")
+        sys.exit(result.returncode)
+
+    except KeyboardInterrupt:
+        console.print()
+        print_warning("Tests interrupted by user")
+        sys.exit(130)
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Check virtualenv
+        if not check_virtualenv():
+            sys.exit(1)
+
+        # Get test arguments
+        test_args = sys.argv[1:]
+
+        # Check if pytest is available and use it
+        if has_pytest():
+            run_pytest(test_args)
+        else:
+            # Fallback to Django's test runner
+            print_warning("pytest not found, using Django's test runner")
+            print_info("Install pytest with: pip install -r requirements-dev.txt")
+            console.print()
+            run_django_tests(test_args)
+
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

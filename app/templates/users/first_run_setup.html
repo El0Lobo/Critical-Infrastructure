@@ -1,0 +1,42 @@
+{% extends "cms/base_public.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="container" style="max-width:520px;padding:2rem 1rem;">
+  <h1>{% trans "Welcome 👋" %}</h1>
+  <p>{% trans "Let’s create your admin account." %}</p>
+
+  <form method="post" class="card p-3" style="gap: .75rem;">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">{{ form.username.label }}</label>
+      {{ form.username }}
+      {{ form.username.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">{{ form.email.label }}</label>
+      {{ form.email }}
+      {{ form.email.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">{{ form.password.label }}</label>
+      {{ form.password }}
+      {{ form.password.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">{{ form.password2.label }}</label>
+      {{ form.password2 }}
+      {{ form.password2.errors }}
+    </div>
+
+    <button class="btn btn-primary">{% trans "Create admin" %}</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+  <h1>{% trans "Delete badge" %}</h1>
+  <p>{% trans "Are you sure you want to delete" %} <strong>{{ badge.emoji }} {{ badge.name }}</strong>?</p>
+  <form method="post">
+    {% csrf_token %}
+    <a href="{% url 'users:badges_list' %}" class="btn btn-light">{% trans "Cancel" %}</a>
+    <button class="btn btn-danger" type="submit">{% trans "Delete" %}</button>
+  </form>
+{% endblock %}

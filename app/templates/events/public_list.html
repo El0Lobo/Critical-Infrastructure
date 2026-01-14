@@ -1,0 +1,19 @@
+{% extends "base_public.html" %}
+{% load i18n %}
+{% block title %}Events{% endblock %}
+{% block content %}
+  <h1>{% trans "Events" %}</h1>
+  <ul>
+    {% for e in events %}
+      <li>
+        <article itemscope itemtype="https://schema.org/Event">
+          <a itemprop="url" href="/events/sample-event/"><span itemprop="name">{{ e.title }}</span></a>
+          <meta itemprop="startDate" content="{{ e.date }}">
+          <span itemprop="location" itemscope itemtype="https://schema.org/Place">
+            <meta itemprop="name" content="{{ e.location }}">
+          </span>
+        </article>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

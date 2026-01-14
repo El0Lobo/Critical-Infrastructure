@@ -1,0 +1,37 @@
+{% load i18n %}
+<div class="inventory-item-row">
+  <div class="inventory-item-info">
+    <div class="inventory-item-title">
+      <strong>{{ item.name }}</strong>
+      {% if item.needs_reorder %}<span class="badge bg-warning text-dark">{% trans "Needs reorder" %}</span>{% endif %}
+      {% if not item.is_active %}<span class="badge bg-secondary">{% trans "Inactive" %}</span>{% endif %}
+    </div>
+    {% if item.description %}<div class="text-muted small">{{ item.description }}</div>{% endif %}
+    <div class="inventory-item-meta text-muted">
+      Stock: {{ item.current_stock }} {{ item.unit_display }} · Desired: {{ item.desired_stock }} · Reorder at {{ item.reorder_point }}
+      {% if item.location %} · Location: {{ item.location }}{% endif %}
+    </div>
+    {% if item.packages.all %}
+      <ul class="inventory-package-list">
+        {% for pkg in item.packages.all %}
+          <li>{{ pkg.label }} — {{ pkg.quantity }} {% if pkg.unit %}{{ pkg.unit.display }}{% else %}{{ item.unit_display }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  <div class="inventory-item-price">
+    {{ item.current_stock|floatformat:2 }} / {{ item.desired_stock|floatformat:2 }}
+  </div>
+  <div class="inventory-item-actions">
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:inventory_item_edit' item.slug %}">{% trans "Edit" %}</a>
+    <form method="post" action="{% url 'inventory:inventory_item_reorder' item.slug %}">
+      {% csrf_token %}
+      {% if item.needs_reorder %}
+        <input type="hidden" name="action" value="clear">
+        <button class="btn btn-sm btn-outline-primary" type="submit">{% trans "Clear flag" %}</button>
+      {% else %}
+        <button class="btn btn-sm btn-danger" type="submit">{% trans "Mark reorder" %}</button>
+      {% endif %}
+    </form>
+  </div>
+</div>

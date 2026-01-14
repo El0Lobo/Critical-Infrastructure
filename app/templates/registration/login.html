@@ -1,0 +1,62 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}{{ nav_label|default:"Login" }}{% endblock %}
+
+{% block content %}
+  {% if page_rendered %}
+    {{ page_rendered|safe }}
+  {% endif %}
+
+  <section class="card login-card" style="max-width:460px;margin:2rem auto;">
+    <h2 style="margin-top:0;">{% trans "Sign in" %}</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="field">
+        {{ form.username.label_tag }}
+        {{ form.username }}
+        {% if form.username.errors %}
+          <div class="field-error">{{ form.username.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+      <div class="field" style="margin-top:.75rem;">
+        {{ form.password.label_tag }}
+        {{ form.password }}
+        {% if form.password.errors %}
+          <div class="field-error">{{ form.password.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+      <div style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">{% trans "Log in" %}</button>
+        {% if password_reset_url %}
+          <a class="btn btn-sm" href="{{ password_reset_url }}">{% trans "Forgot password?" %}</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if show_dev_login %}
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px dashed #ccc;">
+        <form method="post" action="{% url 'dev_force_login' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary" style="width:100%;">
+            🔓 Force Login (Dev)
+          </button>
+          <p style="margin-top:0.5rem;font-size:0.875rem;color:#666;text-align:center;">
+            Development mode only - logs you in as admin
+          </p>
+        </form>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block after_main %}
+  {% if page_footer %}
+    {{ page_footer|safe }}
+  {% endif %}
+{% endblock %}

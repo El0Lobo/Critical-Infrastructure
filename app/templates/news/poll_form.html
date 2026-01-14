@@ -1,0 +1,32 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block title %}{% if mode == "edit" %}{% trans "Edit poll" %}{% else %}{% trans "New poll" %}{% endif %} · CMS{% endblock %}
+{% block content %}
+  <h1>
+    {% if mode == "edit" %}
+      {% trans "Edit poll" %}
+    {% else %}
+      {% trans "Create poll" %}
+    {% endif %}
+  </h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label>{% trans "Question" %} {{ form.question.errors }}{{ form.question }}</label>
+    <label>{% trans "Description" %} {{ form.description.errors }}{{ form.description }}</label>
+    <label>{% trans "Options" %} {{ form.options.errors }}{{ form.options }}</label>
+    <div class="form-grid">
+      <label>{{ form.allow_multiple }} {% trans "Allow multiple selections" %}</label>
+      <label>{{ form.anonymous }} {% trans "Anonymous votes" %}</label>
+      <label>{{ form.allow_results_before_vote }} {% trans "Show results before voting" %}</label>
+    </div>
+    <div class="form-grid">
+      <label>{% trans "Opens at" %} {{ form.opens_at.errors }}{{ form.opens_at }}</label>
+      <label>{% trans "Closes at" %} {{ form.closes_at.errors }}{{ form.closes_at }}</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">{% trans "Save" %}</button>
+      <a class="btn btn-outline-secondary" href="{% url 'news:feed' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends "cms/base_cms.html" %}
+{% load static setup_tags i18n %}
+
+{% block title %}Edit Event &middot; {{ event.title }}{% endblock %}
+
+{% block extra_head %}{% endblock %}
+
+{% block extra_body %}
+  <script src="{% static 'events/events.js' %}" defer></script>
+  <script>
+    (function () {
+      const form = document.querySelector('form.page-form');
+      if (!form) {
+        return;
+      }
+      const lang = document.documentElement.lang || 'en';
+      const eventId = '{{ event.pk }}';
+      const draftKey = `event-draft:${eventId}:${lang}`;
+      const banner = document.getElementById('event-draft-banner');
+      const restoreBtn = banner ? banner.querySelector('[data-action="restore-draft"]') : null;
+      const discardBtn = banner ? banner.querySelector('[data-action="discard-draft"]') : null;
+      let saveTimer = null;
+
+      function collectDraft() {
+        const data = {};
+        Array.from(form.elements).forEach((el) => {
+          if (!el.name || el.type === 'submit' || el.type === 'button' || el.type === 'file') {
+            return;
+          }
+          if (el.type === 'checkbox') {
+            if (!data[el.name]) {
+              data[el.name] = [];
+            }
+            if (el.checked) {
+              data[el.name].push(el.value);
+            }
+            return;
+          }
+          if (el.type === 'radio') {
+            if (el.checked) {
+              data[el.name] = el.value;
+            }
+            return;
+          }
+          if (el.multiple) {
+            data[el.name] = Array.from(el.options)
+              .filter((opt) => opt.selected)
+              .map((opt) => opt.value);
+            return;
+          }
+          data[el.name] = el.value;
+        });
+        return { updatedAt: Date.now(), data };
+      }
+
+      function applyDraft(draft) {
+        if (!draft || !draft.data) {
+          return;
+        }
+        Array.from(form.elements).forEach((el) => {
+          if (!el.name || el.type === 'submit' || el.type === 'button' || el.type === 'file') {
+            return;
+          }
+          if (!(el.name in draft.data)) {
+            return;
+          }
+          if (el.type === 'checkbox') {
+            const values = Array.isArray(draft.data[el.name]) ? draft.data[el.name] : [];
+            el.checked = values.includes(el.value);
+            return;
+          }
+          if (el.type === 'radio') {
+            el.checked = draft.data[el.name] === el.value;
+            return;
+          }
+          if (el.multiple) {
+            const values = Array.isArray(draft.data[el.name]) ? draft.data[el.name] : [];
+            Array.from(el.options).forEach((opt) => {
+              opt.selected = values.includes(opt.value);
+            });
+            return;
+          }
+          el.value = draft.data[el.name];
+        });
+      }
+
+      function scheduleSave() {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+        }
+        saveTimer = setTimeout(() => {
+          try {
+            const payload = collectDraft();
+            localStorage.setItem(draftKey, JSON.stringify(payload));
+          } catch (err) {
+            // ignore storage errors
+          }
+        }, 500);
+      }
+
+      function clearDraft() {
+        try {
+          localStorage.removeItem(draftKey);
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      function maybeShowBanner() {
+        if (!banner) {
+          return;
+        }
+        let stored = null;
+        try {
+          stored = JSON.parse(localStorage.getItem(draftKey) || 'null');
+        } catch (err) {
+          stored = null;
+        }
+        if (!stored || !stored.data) {
+          return;
+        }
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.gap = '.5rem';
+        if (restoreBtn) {
+          restoreBtn.addEventListener('click', function () {
+            applyDraft(stored);
+            banner.style.display = 'none';
+          });
+        }
+        if (discardBtn) {
+          discardBtn.addEventListener('click', function () {
+            clearDraft();
+            banner.style.display = 'none';
+          });
+        }
+      }
+
+      Array.from(form.elements).forEach((el) => {
+        if (!el.name) {
+          return;
+        }
+        el.addEventListener('input', scheduleSave);
+        el.addEventListener('change', scheduleSave);
+      });
+
+      window.addEventListener('beforeunload', scheduleSave);
+      maybeShowBanner();
+
+      form.addEventListener('submit', function () {
+        clearDraft();
+      });
+    })();
+  </script>
+{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Edit event" %}</h1>
+    <p class="sub">{{ event.title }}</p>
+  </div>
+  <div class="actions">
+    <form method="post" action="{% url 'events:delete' event.slug %}" style="display:inline" onsubmit="return confirm('Delete this event?');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline btn-danger">{% trans "Delete" %}</button>
+    </form>
+    <a class="btn btn-outline" href="{% url 'events:detail' event.slug %}">{% trans "Preview" %}</a>
+    <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Back to list" %}</a>
+  </div>
+</section>
+
+{% if occurrence_mode %}
+  <div class="alert alert-warning">
+    Editing only the occurrence on
+    <strong>{{ occurrence_start|date:"D, M d, H:i" }}</strong>.
+    Changes will not impact other dates in the series.
+  </div>
+{% endif %}
+
+<div id="event-draft-banner" class="alert alert-info" style="display:none; margin-bottom:1rem;">
+  <span>{% trans "Unsaved draft found for this language." %}</span>
+  <button type="button" class="btn btn-sm" data-action="restore-draft">{% trans "Restore draft" %}</button>
+  <button type="button" class="btn btn-sm btn-outline-secondary" data-action="discard-draft">{% trans "Discard" %}</button>
+</div>
+
+<form method="post" enctype="multipart/form-data" action="" class="page-form">
+  {% csrf_token %}
+  <div id="event-edit-body">
+    {% include "events/partials/event_form_body.html" with event_form=event_form performer_formset=performer_formset %}
+  </div>
+  <div class="page-actions">
+    <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+    <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Cancel" %}</a>
+  </div>
+</form>
+
+<section class="related-section">
+  <h2>{% trans "Associated shifts" %}</h2>
+  {% with shift_list=event.shifts.all %}
+  {% if shift_list %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% trans "Title" %}</th>
+          <th>{% trans "Start" %}</th>
+          <th>{% trans "End" %}</th>
+          <th>{% trans "Slot" %}</th>
+          <th>{% trans "Filled" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shift in shift_list %}
+          <tr>
+            <td>{{ shift.title }}</td>
+            <td>{{ shift.start_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ shift.end_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ shift.template_segment }} / {{ shift.template_staff_position }}</td>
+            <td>{{ shift.slots_taken }}/{{ shift.capacity }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">{% trans "No shifts generated yet. Enable \"Requires shifts\" and save to apply a standard template." %}</p>
+  {% endif %}
+  {% endwith %}
+</section>
+{% endblock %}

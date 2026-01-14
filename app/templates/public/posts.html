@@ -1,0 +1,17 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Posts — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Posts" %}</h2>
+<div class="grid">
+  {% for post in posts %}
+    <article class="card">
+      <h3 style="margin:0"><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h3>
+      <p class="muted">{{ post.published_at|date:"M d, Y" }}</p>
+      {% if post.excerpt %}<p>{{ post.excerpt }}</p>{% endif %}
+    </article>
+  {% empty %}
+    <p class="muted">{% trans "No posts yet." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

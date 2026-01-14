@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+Django CLI Interface
+Provides a command-line interface for managing the Django project
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    check_virtualenv,
+    console,
+    get_project_root,
+    get_venv_python,
+    print_error,
+    print_warning,
+)
+
+
+def run_django_command(args):
+    """Run a Django management command"""
+    # Get paths
+    project_root = get_project_root()
+    venv_python = get_venv_python()
+    manage_py = project_root / "manage.py"
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    # Build command
+    cmd = [str(venv_python), str(manage_py)] + args
+
+    # Run the command
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        print_error(f"Python executable not found: {venv_python}")
+        sys.exit(1)
+
+
+def show_help():
+    """Show help information"""
+    console.print()
+    console.rule("[bold green]Django CLI Interface[/bold green]", style="green")
+
+    console.print("\n[cyan]Usage:[/cyan]")
+    console.print("  [yellow]./bin/cli [command] [options][/yellow]\n")
+
+    console.print("[cyan]Available commands:[/cyan]")
+    console.print("  [yellow]help[/yellow]           Show this help message")
+    console.print("  [yellow]shell[/yellow]           Open Django shell")
+    console.print("  [yellow]runserver[/yellow]       Start development server")
+    console.print("  [yellow]migrate[/yellow]         Run database migrations")
+    console.print("  [yellow]makemigrations[/yellow]  Create new migrations")
+    console.print("  [yellow]createsuperuser[/yellow] Create a superuser")
+    console.print("  [yellow]collectstatic[/yellow]   Collect static files")
+    console.print("  [yellow]test[/yellow]            Run tests")
+    console.print("  [yellow]check[/yellow]           Run system checks")
+    console.print("  [yellow][custom][/yellow]         Run any Django management command\n")
+
+    console.print("[cyan]Examples:[/cyan]")
+    console.print("  [yellow]./bin/cli shell[/yellow]")
+    console.print("  [yellow]./bin/cli runserver 0.0.0.0:8000[/yellow]")
+    console.print("  [yellow]./bin/cli migrate --fake-initial[/yellow]")
+    console.print("  [yellow]./bin/cli dumpdata --natural-foreign[/yellow]\n")
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Perform checks
+        check_virtualenv()
+
+        # Parse arguments
+        if len(sys.argv) < 2:
+            show_help()
+            sys.exit(0)
+
+        command = sys.argv[1]
+        args = sys.argv[2:]
+
+        # Handle special commands
+        if command in ["help", "--help", "-h"]:
+            show_help()
+        elif command == "shell":
+            run_django_command(["shell"])
+        elif command == "runserver":
+            run_django_command(["runserver"] + args)
+        elif command == "migrate":
+            run_django_command(["migrate"] + args)
+        elif command == "makemigrations":
+            run_django_command(["makemigrations"] + args)
+        elif command == "createsuperuser":
+            run_django_command(["createsuperuser"] + args)
+        elif command == "collectstatic":
+            run_django_command(["collectstatic"] + args)
+        elif command == "test":
+            run_django_command(["test"] + args)
+        elif command == "check":
+            run_django_command(["check"] + args)
+        else:
+            # Pass any other command directly to Django
+            run_django_command([command] + args)
+
+    except KeyboardInterrupt:
+        print_warning("Command interrupted")
+        sys.exit(0)
+    except Exception as e:
+        print_error(f"Unexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

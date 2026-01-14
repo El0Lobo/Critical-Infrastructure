@@ -1,0 +1,130 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Dashboard" %}{% endblock %}
+{% block extra_head %}{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+  <div class="dashboard-header">
+    <div>
+      <h1>{% trans "Dashboard" %}</h1>
+      <p class="text-muted">{% trans "Overview of what's happening this week." %}</p>
+    </div>
+    {% if has_unread_messages %}
+      <a href="{% url 'comms:inbox' %}" class="mail-alert">
+        <span class="mail-icon">✉</span>
+        <span class="mail-text">{% trans "New messages" %}</span>
+      </a>
+    {% endif %}
+  </div>
+  <div class="dashboard-grid">
+  {% if shift_glance %}
+    <section class="dash-card shift-card">
+      <div class="shift-card__header">
+        <div>
+          <h2>{% trans "Shifts this week" %}</h2>
+          {% if shift_glance.open > 0 %}
+            <p class="text-muted">{% blocktrans with count=shift_glance.open %}{{ count }} shift slots still need coverage.{% endblocktrans %}</p>
+          {% else %}
+            <p class="text-success mb-0">{% trans "All shifts are filled for this week. Great job!" %}</p>
+          {% endif %}
+        </div>
+        <div class="shift-card__stats">
+          <span>{% trans "Filled" %}: {{ shift_glance.filled }}</span>
+          <span>{% trans "Open" %}: {{ shift_glance.open }}</span>
+        </div>
+      </div>
+      {% if shift_glance.open_items and shift_glance.open > 0 %}
+        <ul class="shift-card__list">
+          {% for item in shift_glance.open_items %}
+            <li>
+              <div>
+                <strong>{{ item.event.title }}</strong>
+                <div class="text-muted small">{{ item.event.starts_at|date:"D, d M H:i" }}</div>
+              </div>
+              <span class="shift-card__badge">+{{ item.open }} {% trans "slots" %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <div class="shift-card__footer">
+          <a href="/cms/shifts/" class="btn btn-sm btn-primary">{% trans "View shifts" %}</a>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if recent_events %}
+    <section class="dash-card recent-events">
+      <h2>{% trans "Recently added events" %}</h2>
+      <ul>
+        {% for event in recent_events %}
+          <li>
+            <div>
+              <strong>{{ event.title }}</strong>
+              <div class="text-muted small">{{ event.starts_at|date:"D, d M Y H:i" }}</div>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'events:detail' event.slug %}">{% trans "View" %}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if inventory_alerts %}
+    <section class="dash-card inventory-card">
+      <h2>{% trans "Inventory alerts" %}</h2>
+      <p class="text-muted" style="margin-top:.25rem;">{% trans "Items that need restocking." %}</p>
+      <ul class="list-group list-group-flush" style="margin-top:.5rem;">
+        {% for item in inventory_alerts %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <strong>{{ item.name }}</strong>
+              {% if item.location %}<span class="text-muted small"> · {{ item.location }}</span>{% endif %}
+            </div>
+            <small>{{ item.current_stock }} / {{ item.desired_stock }}</small>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="inventory-card__footer">
+        <a class="btn btn-outline-primary btn-sm" href="/cms/inventory/">{% trans "Open inventory" %}</a>
+      </div>
+    </section>
+  {% endif %}
+  {% if news_digest %}
+    <section class="dash-card news-card">
+      <h2>{% trans "News & polls" %}</h2>
+      <ul class="news-card__list">
+        {% for item in news_digest %}
+          <li>
+            <div>
+              <div class="news-card__title">
+                <span class="badge badge--muted">{{ item.badge }}</span>
+                <strong>{{ item.title }}</strong>
+              </div>
+              {% if item.description %}
+                <p class="text-muted small">{{ item.description }}</p>
+              {% endif %}
+              <small class="text-muted">
+                {{ item.timestamp|date:"M d, H:i" }}
+                {% if item.closing_label %} · {{ item.closing_label }}{% endif %}
+              </small>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ item.url }}">{% trans "View" %}</a>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="news-card__footer">
+        <a class="btn btn-primary btn-sm" href="{{ news_feed_url }}">{% trans "Open news" %}</a>
+      </div>
+    </section>
+  {% endif %}
+  {% if cards %}
+    {% for c in cards %}
+      <section class="dash-card">
+        <h3>{{ c.title }}</h3>
+        <p>{{ c.body }}</p>
+      </section>
+    {% endfor %}
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

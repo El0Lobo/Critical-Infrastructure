@@ -1,0 +1,63 @@
+{% load i18n %}
+﻿<div class="thread-modal">
+  <div id="modalThreadBody">
+  <header style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:.5rem;">
+    <h3 class="chat-title" style="margin:0;">
+      {% for a in thread.audiences.all %}
+        {% if a.user and a.user != request.user %}
+          <span class="name">{{ a.user.username }}</span>
+        {% endif %}
+      {% empty %}
+      {% endfor %}
+    </h3>
+    <button type="button" class="btn btn-sm btn-secondary" data-close="#modalThread{{ thread.id }}">
+      ✕ Close
+    </button>
+  </div>
+</header>
+
+  <div class="thread-chat">
+    {% for m in thread.messages.all %}
+      
+      <div class="msg {% if m.sender_user_id == request.user.id %}mine{% else %}theirs{% endif %}">
+        <div class="bubble">
+          <pre style="white-space:pre-wrap; margin:0;font-size:1.3em;">{{ m.body_text }}</pre>
+          {% if m.attachments.all %}
+          <div class="attachments">
+            {% for a in m.attachments.all %}
+              {% if a.mime_type|default:""|slice:":6" == 'image/' %}
+                <a href="/media/{{ a.storage_path }}" target="_blank"><img src="/media/{{ a.storage_path }}" alt="{{ a.filename }}"></a>
+              {% else %}
+                <a href="/media/{{ a.storage_path }}" target="_blank">{{ a.filename }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div class="tiny-legend text-muted"
+              style="margin-top:4px; font-size:0.8em; text-align:{% if m.sender_user_id == request.user.id %}right{% else %}left{% endif %};">
+            {% if m.sender_user %}
+              {{ m.sender_user.username }}
+            {% else %}
+              {{ m.sender_display }}
+            {% endif %}
+            • {{ m.created_at|date:"d. M. Y H:i" }}
+          </div>
+        </div>
+      </div>
+      
+    {% endfor %}
+  </div>
+  {% if thread.type == 'internal' %}
+  <form method="post" enctype="multipart/form-data" action="{% url 'comms:reply_internal' thread.id %}" class="chat-reply">{% csrf_token %}
+    <div class="emoji-wrap">
+      <textarea name="body" rows="2" placeholder="{% trans 'Type a message...' %}"></textarea>
+      <div class="tools">
+        <button type="button" class="btn btn-sm" data-emoji-insert>😊</button>
+        <emoji-picker class="emoji-picker" hidden></emoji-picker>
+        <input type="file" name="attachments" id="reply_attachments" multiple class="file-input"><button type="button" class="btn btn-sm file-paperclip" data-attach-target="#reply_attachments" aria-label="{% trans 'Attach' %}">📎</button>
+      </div>
+          <button class="btn btn-primary">{% trans "Send" %}</button>
+    </div>
+  </form>
+  {% endif %}
+</div>

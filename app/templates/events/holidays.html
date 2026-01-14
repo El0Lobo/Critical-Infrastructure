@@ -1,0 +1,91 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+
+{% block title %}Event Holidays · CMS{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Holiday blackouts" %}</h1>
+    <p class="sub">{% trans "Dates where recurring events are automatically skipped." %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Back to events" %}</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>{% trans "Add holiday window" %}</h2>
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+    {% for field in holiday_form %}
+      <div class="form-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}
+          <ul class="errors">
+            {% for error in field.errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if holiday_form.non_field_errors %}
+      <div class="form-errors">
+        <ul>
+          {% for error in holiday_form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{% trans "Save holiday" %}</button>
+      <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{% trans "Upcoming blackouts" %}</h2>
+  {% if holidays %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% trans "Name" %}</th>
+          <th>{% trans "Starts" %}</th>
+          <th>{% trans "Ends" %}</th>
+          <th>{% trans "Applies to" %}</th>
+          <th>{% trans "Note" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for holiday in holidays %}
+          <tr>
+            <td>{{ holiday.name }}</td>
+            <td>{{ holiday.starts_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ holiday.ends_at|date:"Y-m-d H:i" }}</td>
+            <td>
+              {% if holiday.applies_to_public %}<span class="pill">{% trans "Public" %}</span>{% endif %}
+              {% if holiday.applies_to_internal %}<span class="pill">{% trans "Internal" %}</span>{% endif %}
+            </td>
+            <td>{{ holiday.note|default:"—" }}</td>
+            <td class="actions">
+              <a class="btn btn-outline" href="{% url 'events:holiday_edit' holiday.pk %}">{% trans "Edit" %}</a>
+              <form method="post" action="{% url 'events:holiday_delete' holiday.pk %}" onsubmit="return confirm('Remove this holiday?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-danger">{% trans "Delete" %}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">{% trans "No holiday windows defined yet." %}</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+﻿{% extends "cms/base_cms.html" %}
+{% load setup_tags i18n %}
+
+{% block title %}Thread — CMS{% endblock %}
+
+{% block content %}
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h1 style="margin:0;">{{ thread.subject|default:"(no subject)" }}</h1>
+    <form method="post" action="{% url 'comms:thread_archive' thread.id %}">{% csrf_token %}
+      <button class="btn btn-outline-secondary">{% trans "Archive (me)" %}</button>
+    </form>
+  </div>
+
+  <div class="thread-chat card" style="padding:8px;">
+    {% for m in thread.messages.all %}
+      
+      <div class="msg {% if m.sender_user_id == request.user.id %}mine{% else %}theirs{% endif %}">
+        <div class="bubble">
+          <pre style="white-space:pre-wrap; margin:0;">{{ m.body_text }}</pre>
+          <div class="tiny-legend text-muted" style="margin-top:4px; text-align:{% if m.sender_user_id == request.user.id %}right{% else %}left{% endif %};">
+            {% if m.sender_user %}{{ m.sender_user.username }}{% else %}{{ m.sender_display }}{% endif %} • {{ m.created_at }}
+          </div>
+        </div>
+      </div>
+      
+    {% endfor %}
+  </div>
+
+  {% if thread.type == 'internal' %}
+  <form method="post" action="{% url 'comms:reply_internal' thread.id %}" class="card" style="padding:8px; margin-top:12px;">
+    {% csrf_token %}
+    <label>{% trans "Reply" %}</label>
+    <textarea name="body" rows="4" placeholder="{% trans 'Write a reply...' %}"></textarea>
+    <div class="mt-2">
+      <button class="btn btn-primary">{% trans "Send Reply" %}</button>
+    </div>
+  </form>
+  {% endif %}
+
+  <p><a href="{% url 'comms:inbox' %}">{% trans "← Back to Inbox" %}</a></p>
+{% endblock %}
+
+

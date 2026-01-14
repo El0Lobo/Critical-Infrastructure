@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+Quality Check - Run all code quality checks
+Platform-agnostic check runner for Windows, Linux, and macOS
+"""
+import os
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    check_virtualenv,
+    console,
+    create_status_table,
+    get_project_root,
+    get_venv_python,
+    print_error,
+    print_header,
+    print_info,
+    print_section,
+    print_step,
+    print_success,
+    run_command,
+)
+
+
+def check_ruff_format() -> bool:
+    """Check code formatting with ruff"""
+    venv_python = get_venv_python()
+
+    print_step(1, 3, "Checking code format with ruff...")
+    cmd = [str(venv_python), "-m", "ruff", "format", "--check", "app/"]
+    result = run_command(cmd, check=False)
+
+    if result.returncode == 0:
+        print_success("Code is properly formatted")
+    else:
+        print_error("Code needs formatting - run ./bin/format")
+    console.print()
+
+    return result.returncode == 0
+
+
+def check_ruff() -> bool:
+    """Check code quality with ruff"""
+    venv_python = get_venv_python()
+
+    print_step(2, 3, "Checking code quality with ruff...")
+    cmd = [str(venv_python), "-m", "ruff", "check", "app/"]
+    result = run_command(cmd, check=False)
+
+    if result.returncode == 0:
+        print_success("No linting issues found")
+    else:
+        print_error("Linting issues detected - run ./bin/lint --fix")
+    console.print()
+
+    return result.returncode == 0
+
+
+def check_mypy() -> bool:
+    """Check types with mypy"""
+    venv_python = get_venv_python()
+
+    print_step(3, 3, "Checking types with mypy...")
+    cmd = [str(venv_python), "-m", "mypy", "app/"]
+    result = run_command(cmd, check=False)
+
+    if result.returncode == 0:
+        print_success("No type errors found")
+    else:
+        print_info("Type checking issues detected (not blocking)")
+    console.print()
+
+    # Don't fail on mypy errors for now (gradual adoption)
+    return True
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Check virtualenv
+        if not check_virtualenv():
+            sys.exit(1)
+
+        print_header("Code Quality Checks")
+
+        # Run all checks
+        results = {
+            "formatting": check_ruff_format(),
+            "linting": check_ruff(),
+            "type-checking": check_mypy(),
+        }
+
+        # Print summary
+        print_section("Summary")
+
+        # Create and display results table
+        table = create_status_table(results)
+        console.print(table)
+        console.print()
+
+        passed = sum(1 for v in results.values() if v)
+        total = len(results)
+
+        if all(results.values()):
+            print_success(f"All checks passed! ({passed}/{total})")
+            print_info("Your code is ready to commit!")
+            sys.exit(0)
+        else:
+            print_error(f"Some checks failed ({passed}/{total} passed)")
+            print_info("Fix the issues and run ./bin/check again")
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        console.print()
+        print_error("Checks interrupted by user")
+        sys.exit(130)
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

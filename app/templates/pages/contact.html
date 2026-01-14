@@ -1,0 +1,27 @@
+{% extends "base_public.html" %}
+{% load static i18n %}
+{% block title %}Contact{% endblock %}
+{% block head_extra %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+{% block content %}
+<section class="container">
+  <h1>{% trans "Contact" %}</h1>
+  <div id="map" style="height: 360px; border-radius: 12px; margin: 1rem 0;"></div>
+  <div>
+    <p><strong>{% trans "Address:" %}</strong> <span id="addr">{% trans "Set your address in Settings later." %}</span></p>
+    <p><strong>{% trans "Email:" %}</strong> <a href="mailto:info@example.com">info@example.com</a></p>
+  </div>
+</section>
+<script>
+  // Simple Leaflet map (OSM tiles)
+  var map = L.map('map').setView([47.3769, 8.5417], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  var marker = L.marker([47.3769, 8.5417]).addTo(map);
+  marker.bindPopup('Your venue here').openPopup();
+</script>
+{% endblock %}

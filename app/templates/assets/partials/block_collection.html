@@ -1,0 +1,13 @@
+{% if layout == "list" %}
+  <ul class="asset-list">
+    {% for a in assets %}
+      <li>{% include "assets/partials/block_item.html" with asset=a mode=mode %}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="asset-grid-embed">
+    {% for a in assets %}
+      <div class="cell">{% include "assets/partials/block_item.html" with asset=a mode=mode %}</div>
+    {% endfor %}
+  </div>
+{% endif %}

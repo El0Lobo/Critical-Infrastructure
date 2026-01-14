@@ -1,0 +1,2 @@
+{% extends 'cms/base_cms.html' %}{% block content %}<h1>{% trans "Menu Settings" %}</h1><p>{% trans "Click to (re)seed default unit groups and categories (Drinks → Alcoholic / Non-alcoholic, Food, Snacks)." %}</p><form method='post'>{% csrf_token %}<button class='btn btn-warning'>{% trans "Seed / Update defaults" %}</button></form>{% endblock %}
+{% load i18n %}

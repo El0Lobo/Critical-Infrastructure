@@ -1,0 +1,53 @@
+{% extends "public/base_public1.html" %}
+{% load i18n %}
+{% block title %}{% if active_category %}{{ active_category.name }} — {% endif %}Store{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-3">
+    <div class="list-group">
+      <a class="list-group-item {% if not active_category %}active{% endif %}" href="{% url 'merch_public:shop_index' %}">{% trans "All" %}</a>
+      {% for c in categories %}
+        <a class="list-group-item {% if active_category and active_category.pk == c.pk %}active{% endif %}" href="{% url 'merch_public:shop_category' c.slug %}">{{ c.name }}</a>
+        {% for child in c.children.all %}
+          <a class="list-group-item ms-3" href="{% url 'merch_public:shop_category' child.slug %}">↳ {{ child.name }}</a>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-md-9">
+    {% if products %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+        {% for p in products %}
+          <div class="col">
+            <div class="card h-100">
+              {% if p.primary_image %}
+                <a href="{% url 'merch_public:shop_detail' p.slug %}">
+                  <img src="{{ p.primary_image.image.url }}" class="card-img-top" alt="{{ p.primary_image.alt_text }}" style="height:220px;object-fit:cover;">
+                </a>
+              {% endif %}
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title mb-1"><a class="text-decoration-none" href="{% url 'merch_public:shop_detail' p.slug %}">{{ p.name }}</a></h5>
+                <div class="text-muted mb-2 small">{% if p.featured %}Featured · {% endif %}{{ p.category.name }}</div>
+                <div class="mt-auto d-flex justify-content-between align-items-center">
+                  <div class="fw-semibold">
+                    {% if p.base_price %}
+                      {{ p.base_price }}
+                    {% else %}
+                      {% with m=p.min_variant_price %}{% if m %}from {{ m }}{% else %}—{% endif %}{% endwith %}
+                    {% endif %}
+                  </div>
+                  <a class="btn btn-sm btn-primary" href="{% url 'merch_public:shop_detail' p.slug %}">{% trans "Buy" %}</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">{% trans "No products found." %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

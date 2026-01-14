@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""
+Django Management Command Wrapper
+Platform-agnostic wrapper for manage.py commands
+"""
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import Colors, check_virtualenv, get_project_root, get_venv_python, print_error
+
+
+def run_management_command():
+    """Run a Django management command"""
+    # Get paths
+    project_root = get_project_root()
+    venv_python = get_venv_python()
+    manage_py = project_root / 'manage.py'
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    # Get management command arguments
+    if len(sys.argv) < 2:
+        print_error("No management command specified!")
+        print("\nUsage:")
+        if platform.system() == 'Windows':
+            print(f"  {Colors.BOLD}python bin\\manage <command> [args]{Colors.END}")
+            print(f"\nExample:")
+            print(f"  {Colors.BOLD}python bin\\manage migrate{Colors.END}")
+            print(f"  {Colors.BOLD}python bin\\manage createsuperuser{Colors.END}")
+            print(f"  {Colors.BOLD}python bin\\manage collectstatic{Colors.END}")
+        else:
+            print(f"  {Colors.BOLD}./bin/manage <command> [args]{Colors.END}")
+            print(f"\nExample:")
+            print(f"  {Colors.BOLD}./bin/manage migrate{Colors.END}")
+            print(f"  {Colors.BOLD}./bin/manage createsuperuser{Colors.END}")
+            print(f"  {Colors.BOLD}./bin/manage collectstatic{Colors.END}")
+        sys.exit(1)
+
+    command_args = sys.argv[1:]
+
+    # Build command
+    cmd = [str(venv_python), str(manage_py)] + command_args
+
+    # Run the command
+    try:
+        result = subprocess.run(cmd, check=False)
+        sys.exit(result.returncode)
+    except KeyboardInterrupt:
+        print(f"\n\nCommand interrupted by user")
+        sys.exit(130)
+    except FileNotFoundError:
+        print_error(f"Python executable not found: {venv_python}")
+        sys.exit(1)
+
+
+def main():
+    """Main function"""
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Perform checks
+        check_virtualenv()
+
+        # Run the management command
+        run_management_command()
+
+    except Exception as e:
+        print_error(f"\nUnexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

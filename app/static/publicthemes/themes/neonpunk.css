@@ -1,0 +1,1 @@
+:root{--bg:#0b0b12;--fg:#f1f3f5;--brand:#ff3af2;--border:#24243a;--card:#121222;} body{background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,sans-serif;} main{padding:2rem;} a{color:var(--brand);} .glow{text-shadow:0 0 8px var(--brand);}

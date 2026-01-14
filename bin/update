@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""
+Django Project Update Script
+Updates an existing installation after pulling changes
+Platform-agnostic for Windows, Linux, and macOS
+"""
+import hashlib
+import os
+import sys
+import subprocess
+import platform
+from pathlib import Path
+
+# Add bin directory to path for shared module
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _shared import (
+    console,
+    print_error,
+    print_success,
+    print_info,
+    print_warning,
+    get_project_root,
+    get_venv_python,
+    get_venv_path,
+    get_venv_pip_cmd,
+    run_command,
+    show_banner,
+)
+
+
+def print_step(message):
+    """Print a step message with formatting"""
+    console.print(f"\n[cyan bold]→ {message}[/cyan bold]")
+
+
+def get_file_hash(filepath):
+    """Get MD5 hash of a file"""
+    if not filepath.exists():
+        return None
+    with open(filepath, "rb") as f:
+        return hashlib.md5(f.read()).hexdigest()
+
+
+def git_pull():
+    """Pull latest changes from git"""
+    print_step("Pulling latest changes from git")
+
+    # Check if we're in a git repository
+    result = run_command(
+        ["git", "rev-parse", "--git-dir"],
+        check=False,
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        print_info("Not a git repository, skipping pull")
+        return
+
+    # Get current branch
+    result = run_command(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True
+    )
+    current_branch = result.stdout.strip()
+
+    # Pull changes
+    run_command(["git", "pull", "origin", current_branch])
+
+    print_success(f"Pulled latest changes from {current_branch}")
+
+
+def check_requirements_changed():
+    """Check if requirements files have changed"""
+    project_root = get_project_root()
+
+    # Check if we have cached hashes
+    cache_file = project_root / ".venv" / ".requirements_hash"
+
+    requirements_file = project_root / "requirements.txt"
+    requirements_dev = project_root / "requirements-dev.txt"
+
+    # Calculate current hashes
+    current_hash = get_file_hash(requirements_file) or ""
+    if requirements_dev.exists():
+        current_hash += get_file_hash(requirements_dev) or ""
+
+    # Read cached hash
+    cached_hash = ""
+    if cache_file.exists():
+        with open(cache_file, "r") as f:
+            cached_hash = f.read().strip()
+
+    # Check if changed
+    if current_hash != cached_hash:
+        # Save new hash
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_file, "w") as f:
+            f.write(current_hash)
+        return True
+
+    return False
+
+
+def install_requirements():
+    """Install Python dependencies if they've changed"""
+    if not check_requirements_changed():
+        print_info("Requirements unchanged, skipping installation")
+        return
+
+    print_step("Installing updated Python dependencies")
+
+    project_root = get_project_root()
+    requirements_file = project_root / "requirements.txt"
+    requirements_dev = project_root / "requirements-dev.txt"
+
+    if not requirements_file.exists():
+        print_error(f"requirements.txt not found at {requirements_file}")
+        sys.exit(1)
+
+    pip_cmd = get_venv_pip_cmd()
+
+    # Install production dependencies
+    run_command(
+        pip_cmd + ["install", "-r", str(requirements_file)],
+        error_message="Failed to install production requirements",
+    )
+
+    # Install dev dependencies if they exist
+    if requirements_dev.exists():
+        run_command(
+            pip_cmd + ["install", "-r", str(requirements_dev)],
+            error_message="Failed to install dev requirements",
+        )
+        print_success("Dependencies updated successfully")
+    else:
+        print_success("Dependencies updated successfully")
+
+
+def run_migrations():
+    """Run Django database migrations"""
+    print_step("Running database migrations")
+
+    python_cmd = str(get_venv_python())
+    manage_py = get_project_root() / "manage.py"
+
+    if not manage_py.exists():
+        print_error(f"manage.py not found at {manage_py}")
+        sys.exit(1)
+
+    run_command(
+        [python_cmd, str(manage_py), "migrate"], error_message="Failed to run migrations"
+    )
+
+    print_success("Database migrations completed")
+
+
+def print_final_message():
+    """Print final success message"""
+    show_banner("Update complete. You're all set.", style="green")
+
+    console.print("\n[cyan]Start your server:[/cyan]")
+
+    if platform.system() == "Windows":
+        console.print(f"  [bold]python bin\\dev[/bold]")
+    else:
+        console.print(f"  [bold]./bin/dev[/bold]")
+
+    console.print()
+
+
+def main():
+    """Main update function"""
+    # Punk art header
+    show_banner("BAR OS - Update\nUpdating your installation...", style="cyan")
+
+    try:
+        # Change to project root
+        os.chdir(get_project_root())
+
+        # Check if venv exists
+        venv_path = get_venv_path()
+        if not venv_path.exists():
+            print_error("Virtual environment not found!")
+            print_error("Please run initial setup first:")
+            print_error("  ./bin/setup")
+            sys.exit(1)
+
+        # Run update steps
+        git_pull()
+        install_requirements()  # Only if requirements changed
+        run_migrations()
+        # Print success message
+        print_final_message()
+
+    except KeyboardInterrupt:
+        print_error("\n\nUpdate interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"\n\nUnexpected error during update: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

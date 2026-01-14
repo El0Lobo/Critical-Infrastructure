@@ -1,0 +1,45 @@
+
+{% load dictutils i18n %}
+{% with canview=sitecfg.cms_visibility|get_item:section cancreate=sitecfg.cms_actions|get_item:section|ensure_dict %}
+  {% with cancreate_list=cancreate.create|ensure_list %}
+    {% if user.is_superuser or not canview or user|in_any_group:canview %}
+      <div class="nav-item">
+        <a href="{{ url }}">{{ label }}</a>
+        {% if user.is_superuser %}
+          <div class="acl">
+            <details>
+              <summary title="{% trans 'Visibility' %}">⚙</summary>
+              <div class="menu">
+                <form method="post" action="/cms/visibility/{{ section }}/" style="display:grid;gap:.25rem;">
+                  {% csrf_token %}
+                  <div class="menu-header">{% trans "Visible to" %}</div>
+                  {% for g in all_groups %}
+                    <label>
+                      <input type="checkbox" name="visible_groups" value="{{ g.name }}" {% if canview and g.name in canview %}checked{% endif %}>
+                      {{ g.name }}
+                    </label>
+                  {% empty %}
+                    <div class="empty">{% trans "No groups" %}</div>
+                  {% endfor %}
+                  <button class="btn" type="submit">{% trans "Save" %}</button>
+                </form>
+              </div>
+            </details>
+            {% if cancreate_list %}
+              <details>
+                <summary title="{% trans 'Quick actions' %}">＋</summary>
+                <div class="menu">
+                  {% for action in cancreate_list %}
+                    <a class="btn" href="{{ action.url }}">{{ action.label }}</a>
+                  {% empty %}
+                    <div class="empty">{% trans "No quick actions" %}</div>
+                  {% endfor %}
+                </div>
+              </details>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endwith %}
+{% endwith %}

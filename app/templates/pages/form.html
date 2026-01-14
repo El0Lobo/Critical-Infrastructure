@@ -1,0 +1,702 @@
+{% extends "cms/base_cms.html" %}
+{% load static i18n %}
+{% block title %}Pages · {% if mode == 'create' %}Create{% else %}Edit{% endif %}{% endblock %}
+
+{% block extra_head %}
+  {{ block.super }}
+  <style>
+    .page-meta-card {
+      padding: 1rem 1.1rem;
+    }
+    .page-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .page-field {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+    .page-field--checkbox .form-label {
+
+    }
+    .page-field--checkbox .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .15rem 0;
+      font-weight: 500;
+    }
+    .page-field--checkbox .checkbox-label input { margin: 0; }
+    .page-field--wide {
+      grid-column: span 2;
+    }
+    @media (max-width: 640px) {
+      .page-field--wide {
+        grid-column: span 1;
+      }
+    }
+    .nav-builder.is-disabled { opacity: .5; }
+    .page-builder.is-disabled {
+      opacity: .35;
+      pointer-events: none;
+      filter: grayscale(.2);
+    }
+    .card-collapsible {
+      padding: 1rem 1.2rem;
+    }
+    .card-collapsible__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    .card-collapsible__header h2 {
+      margin: 0;
+    }
+    .card-collapsible__actions {
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .card-collapsible__toggle [data-text-when] {
+      display: none;
+    }
+    .card-collapsible__toggle[aria-expanded="true"] [data-text-when="open"],
+    .card-collapsible__toggle[aria-expanded="false"] [data-text-when="closed"] {
+      display: inline;
+    }
+    .card-collapsible__body {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .card-collapsible[aria-expanded="false"] .card-collapsible__body {
+      display: none;
+    }
+    .custom-code-editor {
+      margin-bottom: 1.5rem;
+    }
+    .custom-code-editor__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .custom-code-editor__actions {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .custom-code-editor__body details {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: rgba(15, 23, 42, 0.55);
+      margin-top: 0.75rem;
+    }
+    .custom-code-editor__body summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .custom-code-editor__field {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .custom-code-editor textarea {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+      min-height: 160px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(5,10,20,0.45);
+      color: inherit;
+    }
+    .custom-code-editor.is-disabled textarea {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .page-details-toggle {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      margin-bottom: 1rem;
+    }
+    .page-details-toggle summary {
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+    }
+    .page-details-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+    .page-details-toggle summary::after {
+      content: "▾";
+      float: right;
+      opacity: 0.7;
+    }
+    .page-details-toggle[open] summary::after {
+      content: "▴";
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <div>
+      <h1 style="margin:0;">{% if mode == 'create' %}Create page{% else %}Edit page{% endif %}</h1>
+      <p class="muted" style="margin:.25rem 0 0;">{% trans "Use the language switcher in the top bar to edit translations for this page." %}</p>
+      {% if page %}
+        <p class="muted" style="margin:.25rem 0 0;">Last updated {{ page.updated_at|date:"M d, Y H:i" }}</p>
+      {% endif %}
+    </div>
+    <div>
+      {% if page and page.get_absolute_url %}
+        <a class="btn btn-sm" href="{{ page.get_absolute_url }}" target="_blank" rel="noopener">{% trans "View live" %}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="page-draft-banner" class="alert alert-info" style="display:none; margin-top:1rem;">
+    <span>{% trans "Unsaved draft found for this language." %}</span>
+    <button type="button" class="btn btn-sm" data-action="restore-draft">{% trans "Restore draft" %}</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="discard-draft">{% trans "Discard" %}</button>
+  </div>
+
+  <form id="page-form" method="post" enctype="multipart/form-data" class="form" style="margin-top:1.5rem;" data-draft-lang="{{ request.LANGUAGE_CODE }}" data-draft-page="{% if page %}{{ page.pk }}{% else %}new{% endif %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+    {{ form.blocks }}
+    {{ form.theme }}
+    {{ form.custom_nav_items }}
+    {{ form.show_navigation_bar.as_hidden }}
+
+
+    <details class="page-details-toggle" open>
+      <summary>{% trans "Page details" %}</summary>
+      <div class="card page-meta-card" style="margin:1rem 0 0;">
+        <div class="page-meta-grid">
+        <div class="page-field">
+          <label for="{{ form.title.id_for_label }}" class="form-label">{% trans "Title" %}</label>
+          {{ form.title }}
+          {% if form.title.errors %}
+            <div class="field-error">{{ form.title.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        <div class="page-field">
+          <label for="{{ form.slug.id_for_label }}" class="form-label">{% trans "Slug" %}</label>
+          {{ form.slug }}
+          <p class="hint">{% trans "Used in the URL, e.g." %} <code>{% trans "/&lt;slug&gt;/" %}</code>.</p>
+          {% if form.slug.errors %}
+            <div class="field-error">{{ form.slug.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        <div class="page-field">
+          <label for="{{ form.status.id_for_label }}" class="form-label">{% trans "Status" %}</label>
+          {{ form.status }}
+        </div>
+        <div class="page-field">
+          <label for="{{ form.navigation_order.id_for_label }}" class="form-label">{% trans "Navigation order" %}</label>
+          {{ form.navigation_order }}
+        </div>
+        <div class="page-field page-field--checkbox">
+          <label for="{{ form.is_visible.id_for_label }}" class="form-label">{% trans "Visibility" %}</label>
+          <label class="checkbox checkbox-label" for="{{ form.is_visible.id_for_label }}">
+            {{ form.is_visible }}
+          </label>
+          <p class="hint">{% trans "Keep disabled while drafting." %}</p>
+        </div>
+        <div class="page-field page-field--wide">
+          <label for="{{ form.summary.id_for_label }}" class="form-label">{% trans "Summary" %}</label>
+          {{ form.summary }}
+          {% if form.summary.errors %}
+            <div class="field-error">{{ form.summary.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        <div class="page-field page-field--wide">
+          <label for="{{ form.hero_image.id_for_label }}" class="form-label">{% trans "Hero image" %}</label>
+          {{ form.hero_image }}
+          {% if page and page.hero_image %}
+            <p class="hint">{% trans "Current:" %} <a href="{{ page.hero_image.url }}" target="_blank" rel="noopener">{% trans "download" %}</a></p>
+          {% endif %}
+          {% if form.hero_image.errors %}
+            <div class="field-error">{{ form.hero_image.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        </div>
+      </div>
+    </details>
+
+    <section id="page-builder"
+             class="page-builder"
+             style="margin-bottom:1.5rem;">
+      <div class="page-builder__layout">
+        <div class="builder-column builder-column--left" aria-label="{% trans 'Block library and layout' %}">
+          <section class="builder-panel builder-panel--library">
+            <header class="builder-panel__header">
+              <div>
+                <h2>{% trans "Blocks" %}</h2>
+                <p class="muted">{% trans "Click to add sections" %}</p>
+              </div>
+            </header>
+            <div class="builder-library" id="builder-library"></div>
+          </section>
+          <section class="builder-panel builder-panel--structure">
+            <header class="builder-panel__header">
+              <div>
+                <h2>{% trans "Layout" %}</h2>
+              </div>
+            </header>
+            <ul class="builder-blocks__list" id="builder-block-list"></ul>
+          </section>
+        </div>
+        <div class="builder-column builder-column--center">
+          <div class="builder-preview">
+            <header class="builder-preview__header">
+              <div>
+                <h2>{% trans "Preview" %}</h2>
+                <p class="muted">{% trans "Toggle between desktop and mobile to spot layout issues early." %}</p>
+                <p class="muted" style="margin-top:.35rem;">{% trans "Tip: right-click any preview element to jump to Advanced styling." %}</p>
+              </div>
+              <div class="builder-preview__actions">
+                <div class="preview-toggle" id="builder-preview-toggle">
+                  <button type="button" class="preview-toggle__btn is-active" data-mode="desktop">{% trans "Desktop" %}</button>
+                  <button type="button" class="preview-toggle__btn" data-mode="mobile">{% trans "Mobile" %}</button>
+                </div>
+                <button type="button" class="btn btn-sm" id="builder-inline-edit-btn" aria-pressed="false">{% trans "Inline edit" %}</button>
+                <button type="button" class="btn btn-sm" id="builder-refresh-preview">{% trans "Refresh" %}</button>
+              </div>
+            </header>
+            <div class="builder-preview__canvas" id="builder-preview-canvas" data-preview-mode="desktop">
+              <div class="builder-preview__viewport">
+                <iframe id="builder-preview-frame" data-preview-frame title="{% trans 'Page preview' %}" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+              </div>
+            </div>
+          </div>
+          <details class="page-details-toggle">
+            <summary>{% trans "Page theme" %}</summary>
+            <section class="builder-panel builder-panel--theme" style="margin-top:1rem;">
+              <header class="builder-panel__header">
+                <div>
+                  <h2>{% trans "Page theme" %}</h2>
+                  <p class="muted">{% trans "Base styles for background, fonts, and sections." %}</p>
+                </div>
+              </header>
+              <div id="builder-theme-panel"></div>
+            </section>
+          </details>
+        </div>
+        <aside class="builder-column builder-column--settings" aria-label="{% trans 'Block settings' %}">
+          <section class="builder-panel builder-panel--settings">
+            <header class="builder-panel__header">
+              <div>
+                <h2>{% trans "Block settings" %}</h2>
+                <p class="muted">{% trans "Select a block to edit its content." %}</p>
+              </div>
+            </header>
+            <div id="builder-settings"></div>
+          </section>
+        </aside>
+      </div>
+      {% if not form.fields.layout_override.widget.is_hidden %}
+        <div class="alert alert-info" style="margin-top:.75rem;">
+          <label class="form-label checkbox" style="margin:0;">
+            {{ form.layout_override }}
+            Make layout unique for {{ request.LANGUAGE_CODE|upper }}.
+          </label>
+          <p class="muted" style="margin:.25rem 0 0;">{% trans "Unchecked = layout shared across all languages." %}</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <div id="asset-browser" class="asset-browser is-hidden" aria-hidden="true">
+      <div class="asset-browser__overlay" data-asset-close></div>
+      <div class="asset-browser__panel" role="dialog" aria-modal="true" aria-labelledby="asset-browser-title" tabindex="-1">
+        <header class="asset-browser__header">
+          <h2 id="asset-browser-title">{% trans "Choose an asset" %}</h2>
+          <button type="button" class="asset-browser__close" data-asset-close aria-label="{% trans 'Close asset browser' %}">×</button>
+        </header>
+        <p class="muted" id="asset-browser-subtitle"></p>
+        <div class="asset-browser__grid" id="asset-browser-list"></div>
+      </div>
+    </div>
+    {% with raw_enabled=form.render_body_only.value %}
+    <section id="custom-code-editor"
+             class="card custom-code-editor"
+             aria-expanded="{{ raw_enabled|yesno:'true,false' }}">
+      <div class="custom-code-editor__header">
+        <div>
+          <h2 style="margin:0;">{% trans "Custom code mode" %}</h2>
+          <p class="muted" style="margin:.25rem 0 0;">{% trans "Author the entire page with HTML, CSS, and JavaScript. When enabled the block builder is ignored." %}</p>
+        </div>
+        <div class="custom-code-editor__actions">
+          <label class="form-label checkbox" style="margin:0;">
+            {{ form.render_body_only }} Use custom code instead of the builder
+          </label>
+          <button type="button" class="btn btn-xs btn-outline-secondary" id="capture-html-from-builder">{% trans "Copy current layout into HTML" %}</button>
+        </div>
+      </div>
+      <div class="custom-code-editor__body">
+        <details>
+          <summary>{% trans "HTML" %}</summary>
+          <div class="custom-code-editor__field">
+            {{ form.body }}
+            {% if form.body.help_text %}
+              <p class="hint">{{ form.body.help_text }}</p>
+            {% endif %}
+            {% if form.body.errors %}
+              <div class="field-error">{{ form.body.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+        </details>
+        <details>
+          <summary>{% trans "CSS" %}</summary>
+          <div class="custom-code-editor__field">
+            {{ form.custom_css }}
+            <p class="hint">{% trans "Overrides are injected after the site theme. Leave blank to rely entirely on the theme." %}</p>
+            {% if form.custom_css.errors %}
+              <div class="field-error">{{ form.custom_css.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+        </details>
+        <details>
+          <summary>{% trans "JavaScript" %}</summary>
+          <div class="custom-code-editor__field">
+            {{ form.custom_js }}
+            <p class="hint">{% trans "Executed at the end of the page. Avoid document.write or blocking calls." %}</p>
+            {% if form.custom_js.errors %}
+              <div class="field-error">{{ form.custom_js.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+    </section>
+    {% endwith %}
+    <div class="form-actions" style="margin-top:1.5rem; display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary" id="builder-save-btn">{% trans "Save" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'pages_index' %}">{% trans "Cancel" %}</a>
+      </div>
+      {% if page %}
+        <form method="post" action="{% url 'pages_delete' slug=page.slug %}" onsubmit="return confirm('Delete this page?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">{% trans "Delete page" %}</button>
+        </form>
+      {% endif %}
+    </div>
+  </form>
+{% endblock %}
+
+{% block extra_body %}
+  {{ block.super }}
+  {{ builder_boot|json_script:"page-builder-config" }}
+  <script type="module" src="{% static 'pages/builder.js' %}"></script>
+  <script>
+  (function(){
+    const toggle = document.getElementById('{{ form.render_body_only.id_for_label }}') || document.getElementById('id_render_body_only');
+    const builder = document.getElementById('page-builder');
+    const editorCard = document.getElementById('custom-code-editor');
+    const codeFields = Array.from(document.querySelectorAll('.code-field'));
+
+    function apply(){
+      const enabled = !!(toggle && toggle.checked);
+      if (builder){
+        builder.classList.toggle('is-disabled', enabled);
+      }
+      if (editorCard){
+        editorCard.classList.toggle('is-disabled', !enabled);
+        editorCard.setAttribute('aria-expanded', enabled ? 'true' : 'false');
+      }
+      codeFields.forEach((field) => {
+        if (!field) return;
+        field.readOnly = !enabled;
+        field.setAttribute('aria-disabled', (!enabled).toString());
+      });
+    }
+
+    toggle?.addEventListener('change', apply);
+    apply();
+  })();
+  </script>
+
+  <script>
+  (function(){
+    const copyBtn = document.getElementById('capture-html-from-builder');
+    const htmlField = document.getElementById('id_body');
+    const cssField = document.getElementById('id_custom_css');
+    const jsField = document.getElementById('id_custom_js');
+    const toggle = document.getElementById('id_render_body_only') || document.getElementById('{{ form.render_body_only.id_for_label }}');
+    const SITE_CSS_URL = "{% static 'public/site.css' %}";
+    let siteCssCache = null;
+
+    function getBuilderConfig(){
+      if (window.__PAGE_BUILDER__) {
+        return window.__PAGE_BUILDER__;
+      }
+      const configEl = document.getElementById('page-builder-config');
+      if (!configEl) {
+        return {};
+      }
+      try {
+        return JSON.parse(configEl.textContent || '{}');
+      } catch (error) {
+        console.warn('Unable to parse builder config JSON', error);
+        return {};
+      }
+    }
+
+    const config = getBuilderConfig();
+
+    if (!copyBtn || !config.urls || !config.urls.preview) {
+      return;
+    }
+
+    function getCsrfToken(){
+      const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return input ? input.value : '';
+    }
+
+    function parseJSONField(fieldId, fallback){
+      const field = document.getElementById(fieldId);
+      if (!field){
+        return fallback;
+      }
+      try {
+        return JSON.parse(field.value || '[]');
+      } catch (error) {
+        console.warn(`Could not parse ${fieldId}`, error);
+        return fallback;
+      }
+    }
+
+    async function getSiteCss(){
+      if (siteCssCache !== null){
+        return siteCssCache;
+      }
+      try {
+        const response = await fetch(SITE_CSS_URL, { headers: { Accept: 'text/css' } });
+        if (!response.ok){
+          throw new Error('Failed to load site CSS');
+        }
+        siteCssCache = await response.text();
+      } catch (error) {
+        console.warn('Could not fetch default site CSS', error);
+        siteCssCache = '';
+      }
+      return siteCssCache;
+    }
+
+    copyBtn.addEventListener('click', async () => {
+      const previewUrl = config.urls.preview;
+      if (!previewUrl){
+        return;
+      }
+      copyBtn.disabled = true;
+      copyBtn.textContent = 'Copying…';
+      try {
+        const payload = {
+          blocks: parseJSONField('id_blocks', []),
+          custom_nav_items: parseJSONField('id_custom_nav_items', []),
+          show_navigation_bar: !!(document.getElementById('id_show_navigation_bar') && document.getElementById('id_show_navigation_bar').checked),
+          body: htmlField ? htmlField.value : '',
+          render_body_only: false,
+        };
+        const response = await fetch(previewUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok){
+          throw new Error(`Preview failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        const fullHtml = data && (data.html || data.content_html) ? (data.html || data.content_html) : '';
+        if (fullHtml && htmlField){
+          htmlField.value = fullHtml.trim();
+          if (toggle && !toggle.checked){
+            toggle.checked = true;
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+        const themeCss = typeof data.theme_css === 'string' ? data.theme_css : '';
+        const existingCustomCss = typeof data.custom_css === 'string' ? data.custom_css : '';
+        if (cssField){
+          const cssChunks = [];
+          const siteCss = await getSiteCss();
+          if (siteCss){
+            cssChunks.push(`/* --- Default site styles (site.css) --- */\n${siteCss.trim()}`);
+          }
+          if (themeCss){
+            cssChunks.push(`/* --- Page theme overrides --- */\n${themeCss.trim()}`);
+          }
+          if (existingCustomCss){
+            cssChunks.push(`/* --- Custom CSS from builder --- */\n${existingCustomCss.trim()}`);
+          }
+          cssField.value = cssChunks.join("\n\n").trim();
+        }
+        const customJs = typeof data.custom_js === 'string' ? data.custom_js : '';
+        if (jsField && (customJs || jsField.value)){
+          jsField.value = customJs.trim();
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Could not copy the current layout into the HTML editor. Please try again.');
+      } finally {
+        copyBtn.disabled = false;
+        copyBtn.textContent = 'Copy current layout into HTML';
+      }
+    });
+  })();
+  </script>
+
+  <script>
+  (function(){
+    const form = document.getElementById('page-form');
+    if (!form) {
+      return;
+    }
+    const lang = form.dataset.draftLang || 'en';
+    const pageId = form.dataset.draftPage || 'new';
+    const draftKey = `page-draft:${pageId}:${lang}`;
+    const banner = document.getElementById('page-draft-banner');
+    const restoreBtn = banner ? banner.querySelector('[data-action="restore-draft"]') : null;
+    const discardBtn = banner ? banner.querySelector('[data-action="discard-draft"]') : null;
+    let saveTimer = null;
+
+    const trackedNames = [
+      'title',
+      'slug',
+      'summary',
+      'status',
+      'is_visible',
+      'show_navigation_bar',
+      'render_body_only',
+      'navigation_order',
+      'hero_image',
+      'body',
+      'custom_css',
+      'custom_js',
+      'custom_nav_items',
+      'blocks',
+      'theme',
+    ];
+
+    function collectDraft() {
+      const data = {};
+      trackedNames.forEach((name) => {
+        const field = form.elements[name];
+        if (!field) {
+          return;
+        }
+        if (field.type === 'checkbox') {
+          data[name] = field.checked;
+        } else {
+          data[name] = field.value;
+        }
+      });
+      return { updatedAt: Date.now(), data };
+    }
+
+    function applyDraft(draft) {
+      if (!draft || !draft.data) {
+        return;
+      }
+      trackedNames.forEach((name) => {
+        const field = form.elements[name];
+        if (!field || draft.data[name] == null) {
+          return;
+        }
+        if (field.type === 'checkbox') {
+          field.checked = Boolean(draft.data[name]);
+        } else {
+          field.value = draft.data[name];
+        }
+      });
+    }
+
+    function scheduleSave() {
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+      }
+      saveTimer = setTimeout(() => {
+        try {
+          const payload = collectDraft();
+          localStorage.setItem(draftKey, JSON.stringify(payload));
+        } catch (err) {
+          // ignore storage errors
+        }
+      }, 500);
+    }
+
+    function clearDraft() {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    function maybeShowBanner() {
+      if (!banner) {
+        return;
+      }
+      let stored = null;
+      try {
+        stored = JSON.parse(localStorage.getItem(draftKey) || 'null');
+      } catch (err) {
+        stored = null;
+      }
+      if (!stored || !stored.data) {
+        return;
+      }
+      banner.style.display = 'flex';
+      banner.style.alignItems = 'center';
+      banner.style.gap = '.5rem';
+      if (restoreBtn) {
+        restoreBtn.addEventListener('click', function () {
+          applyDraft(stored);
+          banner.style.display = 'none';
+        });
+      }
+      if (discardBtn) {
+        discardBtn.addEventListener('click', function () {
+          clearDraft();
+          banner.style.display = 'none';
+        });
+      }
+    }
+
+    trackedNames.forEach((name) => {
+      const field = form.elements[name];
+      if (!field) {
+        return;
+      }
+      field.addEventListener('input', scheduleSave);
+      field.addEventListener('change', scheduleSave);
+    });
+
+    window.addEventListener('beforeunload', scheduleSave);
+    maybeShowBanner();
+
+    const periodic = window.setInterval(scheduleSave, 5000);
+
+    form.addEventListener('submit', function () {
+      window.clearInterval(periodic);
+      clearDraft();
+    });
+  })();
+  </script>
+{% endblock %}

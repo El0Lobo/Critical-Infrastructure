@@ -1,0 +1,16 @@
+<div class="form-field" data-field-name="{{ field.name }}">
+  {% if field.id_for_label %}
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="req">*</span>{% endif %}</label>
+  {% else %}
+    <label>{{ field.label }}{% if field.field.required %}<span class="req">*</span>{% endif %}</label>
+  {% endif %}
+  {{ field }}
+  {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+  {% if field.errors %}
+    <ul class="errors">
+      {% for error in field.errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

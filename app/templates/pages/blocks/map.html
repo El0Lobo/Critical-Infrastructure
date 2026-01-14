@@ -1,0 +1,184 @@
+{% load inline_edit %}
+<section class="page-block page-block--map" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__container">
+    <div class="page-map">
+      <div class="page-map__intro">
+        {% if props.title %}
+          <h2 class="page-map__title" {% inline_attrs block 'title' %}{% if props.style_inline_targets.title %} style="{{ props.style_inline_targets.title }}"{% endif %}>{{ props.title|inline_richtext }}</h2>
+        {% endif %}
+        {% if props.subtitle %}
+          <p class="page-map__subtitle" {% inline_attrs block 'subtitle' %}{% if props.style_inline_targets.subtitle %} style="{{ props.style_inline_targets.subtitle }}"{% endif %}>{{ props.subtitle|inline_richtext }}</p>
+        {% endif %}
+      </div>
+      <div class="page-map__grid">
+        <div class="page-map__canvas" id="{{ map_id }}" data-map-lat="{{ latitude|default_if_none:'' }}" data-map-lng="{{ longitude|default_if_none:'' }}" data-map-zoom="{{ zoom|default:15 }}" data-map-auto="{{ auto_location|yesno:'1,0' }}" data-map-address="{{ address_search|default_if_none:'' }}"></div>
+        <p class="page-map__status" id="{{ map_id }}-status" hidden></p>
+        <div class="page-map__details">
+          {% if props.show_transport and transport_items %}
+            <div class="page-map__detail-group">
+              {% if props.transport_heading %}
+                <p class="page-map__detail-heading">{{ props.transport_heading }}</p>
+              {% endif %}
+              <ul class="page-map__detail-list">
+                {% for item in transport_items %}
+                  <li>
+                    <strong>{{ item.label }}</strong>
+                    {% if item.details %}<small>{{ item.details }}</small>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+          {% if props.show_parking and parking_items %}
+            <div class="page-map__detail-group">
+              {% if props.parking_heading %}
+                <p class="page-map__detail-heading">{{ props.parking_heading }}</p>
+              {% endif %}
+              <ul class="page-map__detail-list">
+                {% for item in parking_items %}
+                  <li>
+                    <strong>{{ item.label }}</strong>
+                    {% if item.details %}<small>{{ item.details }}</small>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+(function() {
+  const mapId = "{{ map_id }}";
+  const el = document.getElementById(mapId);
+  if (!el) {
+    return;
+  }
+  const statusEl = document.getElementById(mapId + "-status");
+  const zoom = parseInt(el.dataset.mapZoom || "15", 10);
+
+  function parseCoord(value) {
+    const num = parseFloat(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  let lat = parseCoord(el.dataset.mapLat);
+  let lng = parseCoord(el.dataset.mapLng);
+  const autoLookup = el.dataset.mapAuto === "1";
+  const address = el.dataset.mapAddress || "";
+
+  function showStatus(text) {
+    if (!statusEl) return;
+    if (!text) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+    } else {
+      statusEl.hidden = false;
+      statusEl.textContent = text;
+    }
+  }
+
+  function ensureLeaflet(callback) {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+    if (window.L) {
+      callback();
+      return;
+    }
+    if (!window._leafletLoading) {
+      window._leafletLoading = true;
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.async = true;
+      script.onload = callback;
+      document.head.appendChild(script);
+    } else {
+      const timer = window.setInterval(() => {
+        if (window.L) {
+          window.clearInterval(timer);
+          callback();
+        }
+      }, 100);
+    }
+  }
+
+  function geocodeAddress(query) {
+    if (!query) {
+      return Promise.resolve(null);
+    }
+    const cache = (window.__pageMapGeocodeCache = window.__pageMapGeocodeCache || {});
+    if (cache[query]) {
+      return Promise.resolve(cache[query]);
+    }
+    const url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(query);
+    return fetch(url, { headers: { Accept: "application/json" } })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((results) => {
+        const hit = Array.isArray(results) && results.length ? results[0] : null;
+        if (!hit) {
+          return null;
+        }
+        const coords = { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon) };
+        if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+          return null;
+        }
+        cache[query] = coords;
+        return coords;
+      })
+      .catch(() => null);
+  }
+
+  function initMap() {
+    if (!window.L || el.dataset.mapReady === "1") {
+      return;
+    }
+    el.dataset.mapReady = "1";
+    const map = L.map(el, { scrollWheelZoom: false });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    let marker = null;
+
+    function placeMarker(latValue, lngValue) {
+      if (!Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
+        showStatus("Unable to determine this location.");
+        return;
+      }
+      showStatus("");
+      const point = [latValue, lngValue];
+      map.setView(point, zoom);
+      if (marker) {
+        marker.setLatLng(point);
+      } else {
+        marker = L.marker(point).addTo(map);
+      }
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      placeMarker(lat, lng);
+    } else if (autoLookup && address) {
+      showStatus("Looking up the venue address…");
+      geocodeAddress(address).then((coords) => {
+        if (coords) {
+          placeMarker(coords.lat, coords.lng);
+        } else {
+          showStatus("We couldn't find this address on the map.");
+        }
+      });
+      map.setView([0, 0], 2);
+    } else {
+      placeMarker(0, 0);
+    }
+  }
+
+  ensureLeaflet(initMap);
+})();
+</script>

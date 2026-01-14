@@ -1,0 +1,61 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block content %}
+<section class="news-public">
+  <div class="container">
+    <header class="news-public__header">
+      <div>
+        <p class="eyebrow">{% trans "Updates" %}</p>
+        <h1>{% trans "Latest news" %}</h1>
+      </div>
+      <form class="news-public__search" method="get">
+        <input type="search" name="q" value="{{ query }}" placeholder="{% trans 'Search news…' %}">
+        {% if active_category %}
+          <input type="hidden" name="category" value="{{ active_category }}">
+        {% endif %}
+        <button type="submit">{% trans "Search" %}</button>
+      </form>
+    </header>
+    {% if categories %}
+      <div class="news-public__filters">
+        <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}" class="{% if not active_category %}is-active{% endif %}">{% trans "All" %}</a>
+        {% for cat in categories %}
+          <a href="?{% if query %}q={{ query|urlencode }}&{% endif %}category={{ cat|urlencode }}" class="{% if active_category == cat %}is-active{% endif %}">{{ cat }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="news-public__grid">
+      {% for post in page_obj %}
+        <article class="news-public__card">
+          <p class="news-public__meta">
+            <time datetime="{{ post.display_timestamp|date:'c' }}">{{ post.display_timestamp|date:"M d, Y" }}</time>
+            {% if post.category %} · <span>{{ post.category }}</span>{% endif %}
+          </p>
+          <h2><a href="{% url 'news_public:public_news_detail' slug=post.slug %}">{{ post.title }}</a></h2>
+          {% if post.summary %}
+            <p>{{ post.summary }}</p>
+          {% else %}
+            <p>{{ post.body|striptags|truncatechars:180 }}</p>
+          {% endif %}
+          <a class="news-public__cta" href="{% url 'news_public:public_news_detail' slug=post.slug %}">{% trans "Read more" %}</a>
+        </article>
+      {% empty %}
+        <p>{% trans "No news yet. Please check back soon." %}</p>
+      {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <nav class="news-public__pagination">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if active_category %}&category={{ active_category|urlencode }}{% endif %}">{% trans "Previous" %}</a>
+        {% endif %}
+        <span>{% blocktrans with page=page_obj.number pages=page_obj.paginator.num_pages %}Page {{ page }} of {{ pages }}{% endblocktrans %}</span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if active_category %}&category={{ active_category|urlencode }}{% endif %}">{% trans "Next" %}</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

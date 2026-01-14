@@ -1,0 +1,16 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}Gallery — {{ site_settings.org_name }}{% endblock %}
+{% block content %}
+<h2>{% trans "Gallery" %}</h2>
+<div class="grid" style="grid-template-columns: repeat(3, 1fr)">
+  {% for image in images %}
+    <figure class="card" style="padding:0">
+      <img src="{{ image.url }}" alt="{{ image.alt|default:'Gallery image' }}" style="display:block;width:100%;height:auto;border-radius:.5rem .5rem 0 0">
+      {% if image.caption %}<figcaption style="padding: .5rem">{{ image.caption }}</figcaption>{% endif %}
+    </figure>
+  {% empty %}
+    <p class="muted">{% trans "No images yet." %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

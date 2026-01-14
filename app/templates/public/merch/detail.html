@@ -1,0 +1,57 @@
+{% extends "public/base_public.html" %}
+{% load i18n %}
+{% block title %}{{ product.name }} — Store{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-6">
+    {% if product.images.all %}
+      <div class="mb-2">
+        {% with hero=product.primary_image %}
+          {% if hero %}
+            <img src="{{ hero.image.url }}" alt="{{ hero.alt_text }}" style="width:100%;max-height:480px;object-fit:cover;border-radius:8px;">
+          {% endif %}
+        {% endwith %}
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        {% for img in product.images.all %}
+          <img src="{{ img.image.url }}" alt="{{ img.alt_text }}" style="height:72px;width:72px;object-fit:cover;border-radius:6px;">
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="col-md-6">
+    <h1 class="h3">{{ product.name }}</h1>
+    <div class="text-muted mb-2">{{ product.category.name }}</div>
+    <div class="mb-3">{{ product.description|linebreaks }}</div>
+
+    <div class="mb-3">
+      <strong>{% trans "Price:" %}</strong>
+      {% if product.base_price %}
+        {{ product.base_price }}
+      {% else %}
+        {% with m=product.min_variant_price %}{% if m %}from {{ m }}{% else %}—{% endif %}{% endwith %}
+      {% endif %}
+    </div>
+
+    {% if product.variants.all %}
+      <div class="mb-3">
+        <label class="form-label">{% trans "Variant" %}</label>
+        <select class="form-select">
+          {% for v in product.variants.all %}
+            <option>
+              {% if v.size_label %}{{ v.size_label }} · {% endif %}
+              {% if v.color %}{{ v.color }} · {% endif %}
+              {% if v.length_cm and v.width_cm %}{{ v.length_cm }}×{{ v.width_cm }}cm · {% endif %}
+              {{ v.price }}
+              {% if v.stock <= 0 %} — Out of stock{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    <button class="btn btn-primary btn-lg">{% trans "Buy" %}</button>
+  </div>
+</div>
+{% endblock %}

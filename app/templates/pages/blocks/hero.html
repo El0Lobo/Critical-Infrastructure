@@ -1,0 +1,33 @@
+{% load static %}
+{% load inline_edit %}
+{% if props.style_font_faces %}
+  {% for css in props.style_font_faces %}
+    <style>{{ css|safe }}</style>
+  {% endfor %}
+{% endif %}
+<section class="page-block page-block--hero align-{{ props.alignment|default:'center' }}" {% if props.style_inline %}style="{{ props.style_inline }}"{% endif %}>
+  <div class="page-block__background" style="{% if props.background_image_resolved %}background-image:linear-gradient(rgba(0,0,0,{{ props.overlay|default:0.4 }}), rgba(0,0,0,{{ props.overlay|default:0.4 }})), url('{{ props.background_image_resolved }}');{% endif %}">
+    <div class="page-block__container">
+      {% with style=props.style_inline_targets.kicker %}
+        {% if props.kicker %}<p class="page-hero__kicker" {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'kicker' %}>{{ props.kicker|inline_richtext }}</p>{% endif %}
+      {% endwith %}
+      {% with style=props.style_inline_targets.title %}
+        {% if props.title %}<h1 class="page-hero__title" {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'title' %}>{{ props.title|inline_richtext }}</h1>{% endif %}
+      {% endwith %}
+      {% with style=props.style_inline_targets.subtitle %}
+        {% if props.subtitle %}<p class="page-hero__subtitle" {% if style %}style="{{ style }}"{% endif %} {% inline_attrs block 'subtitle' %}>{{ props.subtitle|inline_richtext }}</p>{% endif %}
+      {% endwith %}
+      {% if props.actions %}
+        <div class="page-hero__actions">
+          {% for action in props.actions %}
+            <a
+              class="btn btn-{{ action.style|default:'primary' }}"
+              href="{{ action.href|default:'#' }}"
+              {% if action.new_tab %}target="_blank" rel="noopener"{% endif %}
+            >{{ action.label }}</a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>

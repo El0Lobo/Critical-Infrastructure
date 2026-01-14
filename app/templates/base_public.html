@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Bar OS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'public/site.css' %}">
+  {% if site_icon_links %}
+    {% for icon in site_icon_links %}
+      <link rel="{{ icon.rel|default:'icon' }}" href="{{ icon.href }}"{% if icon.type %} type="{{ icon.type }}"{% endif %}{% if icon.sizes %} sizes="{{ icon.sizes }}"{% endif %}>
+    {% endfor %}
+  {% endif %}
+</head>
+<body>
+  <div class="site-shell">
+    {% block site_nav %}
+      {% if navigation_html %}
+        {{ navigation_html|safe }}
+      {% endif %}
+    {% endblock %}
+
+    <main class="site-main">
+      {% block content %}{% endblock %}
+    </main>
+    {% block after_main %}{% endblock %}
+  </div>
+</body>
+</html>

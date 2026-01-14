@@ -1,0 +1,409 @@
+{% extends "cms/base_cms.html" %}
+{% load static setup_tags i18n %}
+
+{% block title %}Shifts &middot; CMS{% endblock %}
+
+{% block extra_head %}
+  {{ block.super }}
+  <style>
+
+    .collapse-toggle {
+      border: 0;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      margin-right: .5rem;
+    }
+    .collapse-toggle .chev {
+      transition: transform .18s ease;
+      display: inline-block;
+    }
+    .collapsible[aria-expanded="true"] .collapse-toggle .chev {
+      transform: rotate(90deg);
+    }
+    .templates-panel.collapsible .templates-body {
+      display: none;
+    }
+    .templates-panel.collapsible[aria-expanded="true"] .templates-body {
+      display: block;
+    }
+    .module-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .module-header .module-actions {
+      margin-left: auto;
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+    }
+    .visibility-anchor {
+      position: relative;
+      display: inline-flex;
+      margin-left: .4rem;
+    }
+  </style>
+{% endblock %}
+
+{% block extra_body %}
+  <script src="{% static 'shifts/shifts.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Shift planner" %}</h1>
+    <p class="sub">{% trans "Track staffing needs and assignments per event." %}</p>
+  </div>
+  {% if request.user|allow_for:'cms.shifts.templates' %}
+
+  {% endif %}
+</section>
+
+<section class="card filter-card">
+  <form id="shifts-filter-form" method="get" class="filter-form">
+    <input type="hidden" name="period_offset" value="{{ shift_period_offset }}">
+    <div class="filter-nav">
+      {% if shift_filter_nav_show %}
+        <a class="nav-arrow" href="{{ shift_filter_nav_prev_url }}" aria-label="{% blocktrans with label=shift_filter_timeframe_label|default:_("period") %}Previous {{ label }}{% endblocktrans %}">&#8592;</a>
+      {% endif %}
+      <span class="range-label">{{ shift_filter_range_label }}</span>
+      {% if shift_filter_nav_show %}
+        <a class="nav-arrow" href="{{ shift_filter_nav_next_url }}" aria-label="{% blocktrans with label=shift_filter_timeframe_label|default:_("period") %}Next {{ label }}{% endblocktrans %}">&#8594;</a>
+      {% endif %}
+    </div>
+<div class="filter-grid" style="display:flex;align-items:center;gap:.5rem;">
+  <label>
+    <span class="label">{% trans "Timeframe" %}</span>
+    {{ shift_filter_form.timeframe }}
+  </label>
+
+  <label class="checkbox">
+    {{ shift_filter_form.include_past }}
+    <span>{% trans "Include past shifts" %}</span>
+  </label>
+
+  <a class="btn btn-outline"
+     href="{% url 'shifts:index' %}"
+     style="margin-left:auto;">
+    {% trans "Reset" %}
+  </a>
+</div>
+
+  </form>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("shifts-filter-form");
+      if (!form) return;
+      const timeframe = form.querySelector('[name="timeframe"]');
+      const offset = form.querySelector('[name="period_offset"]');
+      const autoFields = form.querySelectorAll('[name="timeframe"], [name="include_past"]');
+      autoFields.forEach((field) => {
+        field.addEventListener("change", () => {
+          if (field === timeframe && offset) {
+            offset.value = 0;
+          }
+          if (typeof form.requestSubmit === "function") {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        });
+      });
+    });
+  </script>
+</section>
+
+{% if request.user|allow_for:'cms.shifts.templates' %}
+<section class="templates-panel card collapsible" data-collapse-key="shifts:templates" aria-expanded="false">
+  <header class="templates-panel__header">
+<div class="title-row" style="display:flex;align-items:center;gap:.5rem;max-width:100%;">
+  <button type="button" class="collapse-toggle" data-collapse-toggle="" aria-label="{% trans 'Toggle standard shifts' %}">
+    <span class="chev">▶</span>
+  </button>
+
+  <h2 style="margin:0;">{% trans "Standard shifts" %}</h2>
+
+  <span class="visibility-anchor">
+    <span class="cfg-cog"
+          title="{% trans 'Visibility for cms.shifts.templates' %}"
+          role="button"
+          tabindex="0"
+          hx-get="/cms/settings/visibility/picker/?key=cms.shifts.templates&amp;label=Standard shift controls"
+          hx-trigger="click consume"
+          hx-target="closest .visibility-anchor"
+          hx-swap="beforeend">⚙️</span>
+  </span>
+
+  <p class="quiet" style="margin-top:.5rem;">{% trans "Define reusable shifts (door, bar, etc.) that event creators can toggle." %}</p>
+
+  <!-- Button aligned right -->
+  <button class="btn btn-secondary"
+          data-open-modal="#modal-create-template"
+          style="margin-left:auto;">
+    + New standard shift
+  </button>
+</div>
+
+
+  </header>
+
+  <div class="templates-body">
+  {% if templates %}
+    <table class="data-table compact">
+      <thead>
+        <tr>
+          <th>{% trans "Name" %}</th>
+          <th>{% trans "Segments" %}</th>
+          <th>{% trans "People/segment" %}</th>
+          <th>{% trans "Start from" %}</th>
+          <th>{% trans "Start offset" %}</th>
+          <th>{% trans "End offset" %}</th>
+          <th>{% trans "Duration" %}</th>
+          <th>{% trans "Signup" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for template, edit_form in template_forms %}
+          <tr>
+            <td>{{ template.name }}</td>
+            <td>{{ template.segment_count }}</td>
+            <td>{{ template.capacity }}</td>
+            <td>{{ template.get_start_reference_display }}</td>
+            <td>{{ template.start_offset_minutes }} min</td>
+            <td>{{ template.end_offset_minutes }} min</td>
+            <td>{% if template.duration_minutes %}{{ template.duration_minutes }} min{% else %}Auto{% endif %}</td>
+            <td>{% if template.allow_signup %}Allowed{% else %}Manual only{% endif %}</td>
+            <td class="row-actions">
+              <button class="btn btn-outline" data-open-modal="#modal-edit-template-{{ template.id }}">{% trans "Edit" %}</button>
+              <form method="post" action="{% url 'shifts:template_delete' template.id %}" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-danger" onclick="return confirm('Delete this standard shift?');">{% trans "Delete" %}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">{% trans "No standard shifts defined yet. Add one to make event creation faster." %}</p>
+  {% endif %}
+</div>
+</section>
+{% endif %}
+
+{% for template, edit_form in template_forms %}
+  <div class="modal-overlay" id="modal-edit-template-{{ template.id }}" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-edit-template-title-{{ template.id }}">
+      <div class="modal-header">
+        <h2 id="modal-edit-template-title-{{ template.id }}">{% trans "Edit standard shift" %}</h2>
+        <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+      </div>
+      <form method="post" action="{% url 'shifts:template_update' template.id %}" class="modal-form">
+        {% csrf_token %}
+        {% include "shifts/partials/template_form_body.html" with template_form=edit_form %}
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+          <button type="button" class="btn btn-outline" data-close-modal>{% trans "Cancel" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+
+{% if events_with_shifts and request.user|allow_for:'cms.shifts.assign' %}
+  <section class="card shift-schedule">
+    <h2>{% trans "Shift coverage" %}</h2>
+    <div class="shift-grid">
+      {% for bundle in events_with_shifts %}
+        <article class="shift-card">
+          <header class="shift-card-header">
+            <div class="shift-card-title">
+              <button type="button" class="event-link" data-open-modal="#modal-event-{{ bundle.event.id }}">{{ bundle.event.title }}</button>
+              {% if bundle.event.is_recurring %}<span class="pill">{% trans "Recurring" %}</span>{% endif %}
+              {% if bundle.event.requires_shifts %}<span class="pill pill-green">{% trans "Shifts enabled" %}</span>{% endif %}
+            </div>
+            <div class="shift-card-meta">
+              <span class="quiet">
+                {% if bundle.occurrence_label %}
+                  {{ bundle.occurrence_label }}
+                {% elif bundle.event.starts_at %}
+                  {{ bundle.event.starts_at|date:"D, M d · H:i" }}
+                {% elif bundle.event.recurrence_next_start_at %}
+                  {{ bundle.event.recurrence_next_start_at|date:"D, M d · H:i" }}
+                {% else %}
+                  Unscheduled
+                {% endif %}
+              </span>
+            </div>
+          </header>
+          <div class="shift-card-body">
+            {% if bundle.shifts %}
+              <ul class="shift-list">
+                {% for shift in bundle.shifts %}
+                  <li class="shift-slot">
+                    <div class="slot-main">
+                      <strong>{{ shift.title }}</strong>
+                      <span class="quiet">{{ shift.start_at|date:"H:i" }} – {{ shift.end_at|date:"H:i" }}</span>
+                    </div>
+                    <div class="slot-side">
+                      {% with badges=shift.assignment_badges %}
+                        {% if badges %}
+                          <div class="assignment-badges">
+                            {% for badge in badges %}
+                              {% if request.user.is_authenticated and badge.user_id == request.user.id %}
+                                <span class="pill pill-green">{% trans "You" %}</span>
+                              {% else %}
+                                <span class="pill pill-assignee">{{ badge.name }}</span>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      {% endwith %}
+                      {% if shift.allow_signup and shift.id not in taken_shift_ids and not shift.is_full %}
+                        <form method="post" action="{% url 'shifts:take' shift.id %}">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-outline">{% trans "Take shift" %}</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="quiet">{% trans "No shifts defined for this event in the selected window." %}</p>
+            {% endif %}
+          </div>
+          <footer class="shift-card-footer">
+            <a class="btn btn-outline" href="{% url 'shifts:manage_event' bundle.event.slug %}">{% trans "Manage shifts" %}</a>
+            {% if bundle.has_shift_options and request.user|allow_for:"cms.shifts.assign" %}
+              <button class="btn btn-outline" data-open-modal="#modal-assign" data-event-id="{{ bundle.event.id }}" data-event-title="{{ bundle.event.title }}" data-assign-options='{{ bundle.assign_options_json|escape }}'>{% trans "Assign shifts" %}</button>
+            {% endif %}
+            <span class="visibility-anchor">{% visibility_cog_inline "cms.shifts.assign" "Assign shift controls" target='.visibility-anchor' %}</span>
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% else %}
+  <p class="empty">{% trans "No shifts in this timeframe." %}</p>
+{% endif %}
+
+{% for bundle in events_with_shifts %}
+  <div class="modal-overlay" id="modal-event-{{ bundle.event.id }}" hidden>
+    <div class="modal-card modal-event-card" role="dialog" aria-modal="true" aria-labelledby="modal-event-title-{{ bundle.event.id }}">
+      <div class="modal-header">
+        <h2 id="modal-event-title-{{ bundle.event.id }}">{{ bundle.event.title }}</h2>
+        <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+      </div>
+      <div class="modal-body event-modal-body">
+        {% include "shifts/partials/event_summary.html" with event=bundle.event %}
+      </div>
+      <div class="modal-actions">
+        <a class="btn btn-outline" href="{% url 'events:edit' bundle.event.slug %}">{% trans "Edit event" %}</a>
+        <a class="btn btn-outline" href="{% url 'shifts:manage_event' bundle.event.slug %}">{% trans "Manage shifts" %}</a>
+        <a class="btn btn-outline" href="{% url 'events:detail' bundle.event.slug %}" target="_blank" rel="noopener">{% trans "Preview" %}</a>
+        <button type="button" class="btn btn-primary" data-close-modal>{% trans "Close" %}</button>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+{% if request.user|allow_for:'cms.shifts.stats' %}
+<section class="stats-panel">
+  <header>
+    <h2>{% trans "Shift statistics" %} <span class="visibility-anchor">{% visibility_cog_inline 'cms.shifts.stats' 'Shift statistics' target='.visibility-anchor' %}</span></h2>
+    <form method="get" class="filters">
+      {{ stats_form.period }}
+      <button class="btn btn-outline" type="submit">{% trans "Filter" %}</button>
+    </form>
+  </header>
+  <table class="data-table compact">
+    <thead>
+      <tr>
+        <th>{% trans "User" %}</th>
+        <th>{% trans "Total shifts" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in stats %}
+        <tr>
+          <td>{{ row.display_name }}</td>
+          <td>{{ row.total }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2" class="empty">{% trans "No assignments in this period." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<!-- Assignment modal -->
+<div class="modal-overlay" id="modal-assign" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-assign-title">
+    <div class="modal-header">
+      <h2 id="modal-assign-title">{% trans "Assign shift" %}</h2>
+      <p class="sub" data-assign-summary></p>
+      <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+    </div>
+    <form id="shift-assign-form" method="post" action="/cms/shifts/assign/__id__/" class="modal-form" hx-post="/cms/shifts/assign/__id__/" hx-target="#assignment-form-body" hx-swap="outerHTML" data-base-action="/cms/shifts/assign/__id__/">
+      {% csrf_token %}
+      <input type="hidden" name="shift_id" value="">
+      <div id="assignment-form-body">
+        {% include "shifts/partials/assignment_form_body.html" with assign_form=assign_form %}
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">{% trans "Save assignment" %}</button>
+        <button type="button" class="btn btn-outline" data-close-modal>{% trans "Cancel" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Standard shift modal -->
+<div class="modal-overlay" id="modal-create-template" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-template-title">
+    <div class="modal-header">
+      <h2 id="modal-template-title">{% trans "New standard shift" %}</h2>
+      <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+    </div>
+    <form id="template-create-form" method="post" action="{% url 'shifts:template_create' %}" hx-post="{% url 'shifts:template_create' %}" hx-target="#template-form-body" hx-swap="outerHTML" class="modal-form">
+      {% csrf_token %}
+      <div id="template-form-body">
+        {% include "shifts/partials/template_form_body.html" with template_form=template_form %}
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">{% trans "Save standard shift" %}</button>
+        <button type="button" class="btn btn-outline" data-close-modal>{% trans "Cancel" %}</button>
+      </div>
+    </form>
+</div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-collapse-key]").forEach(function (panel) {
+      const key = panel.getAttribute("data-collapse-key");
+      const toggle = panel.querySelector("[data-collapse-toggle]");
+      if (!toggle) return;
+      let expanded = false;
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved === "1") expanded = true;
+      } catch (e) {}
+      panel.setAttribute("aria-expanded", expanded ? "true" : "false");
+      toggle.addEventListener("click", function () {
+        const next = panel.getAttribute("aria-expanded") !== "true";
+        panel.setAttribute("aria-expanded", next ? "true" : "false");
+        try { localStorage.setItem(key, next ? "1" : "0"); } catch (e) {}
+      });
+    });
+  });
+</script>
+{% endblock %}

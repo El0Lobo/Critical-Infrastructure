@@ -1,0 +1,238 @@
+{% extends "cms/base_cms.html" %}
+{% load i18n %}
+{% block content %}
+<style>
+  .grid-2 { display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
+  .card { padding:16px; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+  .stack > * + * { margin-top:.5rem; }
+  .stack-lg > * + * { margin-top:1rem; }
+  .row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .cols-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .cols-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:12px; }
+  .field > label { display:block; font-weight:600; margin-bottom:.25rem; }
+  .muted { color:#6b7280; }
+  .br { height:1px; background:rgba(0,0,0,.08); margin:12px 0; border:0; }
+  textarea { min-height: 120px; }
+  .actions { display:flex; gap:.5rem; margin-top:16px; }
+</style>
+
+<h1 class="mb-2">{% if item %}Edit{% else %}New{% endif %} Artist / Band</h1>
+      {% if form.errors or form.non_field_errors %}
+        <div class="card" style="padding:12px; border:1px solid #ef4444;">
+          <h3 style="margin:0 0 .5rem 0; color:#b91c1c;">{% trans "Please fix the errors below" %}</h3>
+          {% if form.non_field_errors %}
+            <div style="margin-bottom:.5rem; color:#b91c1c;">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+          <ul style="margin:0; padding-left:1rem; color:#b91c1c;">
+            {% for field in form %}
+              {% if field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+<form id="bandForm" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <div class="grid-2">
+    <!-- LEFT COLUMN -->
+    <div class="stack-lg">
+      <!-- Identity -->
+      <section class="card stack">
+        <h2>{% trans "Identity" %}</h2>
+        <div class="field">
+          <label>{% trans "Type" %}</label>
+          {{ form.performer_type }}
+        </div>
+        <div class="field">
+          <label>{% trans "Name" %}</label>
+          {{ form.name }}
+          {{ form.slug.as_hidden }}
+        </div>
+        <div class="field">
+          <label>{% trans "Description" %}</label>
+          {{ form.description }}
+        </div>
+        <div class="field">
+          <label>{% trans "Genre / style" %}</label>
+          {{ form.genre }}
+          <small class="muted">{% trans "Short tag like “Techno”, “Indie Rock”, “House”." %}</small>
+        </div>
+        <div class="cols-2">
+          <div class="field">
+            <label>{% trans "Picture" %}</label>
+            {{ form.photo }}
+          </div>
+          <div class="field">
+            <label>{% trans "Last performed (date)" %}</label>
+            <input
+              type="date"
+              id="id_last_performed_on"
+              name="{{ form.last_performed_on.html_name }}"
+              value="{{ form.last_performed_on.value|date:'Y-m-d' }}"
+              class="form-control"
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- Private booking contact -->
+      <section class="card stack">
+        <h2>{% trans "Private booking contact" %}</h2>
+        <p class="muted">{% trans "Kept internal; not shown publicly." %}</p>
+        <div class="cols-3">
+          <div class="field"><label>{% trans "Email" %}</label>
+            <input type="email" id="friendly_email" class="form-control" placeholder="{% trans 'email address' %}">
+          </div>
+          <div class="field"><label>{% trans "Phone" %}</label>
+            <input type="tel" id="friendly_phone" class="form-control" placeholder="+49 …">
+          </div>
+          <div class="field"><label>{% trans "Website" %}</label>
+            <input type="url" id="friendly_url" class="form-control" placeholder="{% trans 'website URL' %}">
+          </div>
+        </div>
+        <div class="field">
+          <label>{% trans "How did we get in touch? (notes)" %}</label>
+          {{ form.contact_notes }}
+        </div>
+        {{ form.contact_type.as_hidden }}
+        {{ form.contact_value.as_hidden }}
+      </section>
+
+      <!-- Public socials -->
+      <section class="card stack">
+        <h2>{% trans "Public links" %}</h2>
+        <p class="muted">{% trans "Shown on the public profile." %}</p>
+        <div class="cols-3">
+          <div class="field"><label>{% trans "Website" %}</label>{{ form.website }}</div>
+          <div class="field"><label>{% trans "Instagram" %}</label>{{ form.instagram }}</div>
+          <div class="field"><label>{% trans "Facebook" %}</label>{{ form.facebook }}</div>
+          <div class="field"><label>{% trans "YouTube" %}</label>{{ form.youtube }}</div>
+          <div class="field"><label>{% trans "Bandcamp" %}</label>{{ form.bandcamp }}</div>
+          <div class="field"><label>{% trans "SoundCloud" %}</label>{{ form.soundcloud }}</div>
+        </div>
+      </section>
+
+      <!-- Internal notes -->
+      <section class="card stack">
+        <h2>{% trans "Internal notes" %}</h2>
+        {{ form.comment_internal }}
+      </section>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="stack-lg">
+      <!-- Publication -->
+      <section class="card stack">
+        <h2>{% trans "Publish" %}</h2>
+        <div class="row">
+          {{ form.is_published }} <span>{% trans "Visible on the public site" %}</span>
+        </div>
+        <div class="field">
+          <label>{% trans "Publish date (optional)" %}</label>
+          {{ form.published_at }}
+        </div>
+        {{ form.seo_title.as_hidden }}
+        {{ form.seo_description.as_hidden }}
+        {{ form.og_image_override.as_hidden }}
+        <hr class="br">
+        <p class="muted" style="margin:0;">{% trans "SEO auto-filled from name/description; override in admin if needed." %}</p>
+      </section>
+
+      <!-- Compensation -->
+      <section class="card stack">
+        <h2>{% trans "Compensation" %} <span class="muted">{% trans "(internal only)" %}</span></h2>
+        <div class="row">
+          <label class="row"><input type="radio" name="comp_choice" value="fixed"> {% trans "Fixed fee" %}</label>
+          <label class="row"><input type="radio" name="comp_choice" value="door"> {% trans "Door deal" %}</label>
+          <label class="row"><input type="radio" name="comp_choice" value="unpaid"> {% trans "Unpaid" %}</label>
+        </div>
+        {{ form.compensation_type.as_hidden }}
+        <div id="fixed_block" class="stack" style="display:none;">
+          <div class="field">
+            <label>{% trans "Fixed fee (€)" %}</label>
+            <input type="number" step="0.01" min="0" id="fixed_amount" class="form-control" placeholder="{% trans 'e.g. 300.00' %}">
+            {{ form.fee_amount.as_hidden }}
+          </div>
+        </div>
+        <div id="door_block" class="cols-2" style="display:none;">
+          <div class="field"><label>{% trans "Entry price (€)" %}</label>
+            <input type="number" step="0.01" min="0" id="door_entry" class="form-control" placeholder="{% trans 'e.g. 10.00' %}">
+          </div>
+          <div class="field"><label>{% trans "Payout (€)" %}</label>
+            <input type="number" step="0.01" min="0" id="door_payout" class="form-control" placeholder="{% trans 'e.g. 200.00' %}">
+          </div>
+          {{ form.entry_price.as_hidden }}
+          {{ form.payout_amount.as_hidden }}
+        </div>
+        <p class="muted">{% trans "Stored for records only; never shown publicly or in CMS lists." %}</p>
+      </section>
+    </div>
+  </div>
+
+  <!-- Bottom actions -->
+  <div class="actions">
+    <button class="btn btn-primary">{% trans "Save" %}</button>
+    <a class="btn btn-secondary" href="{% url 'bands:index' %}">{% trans "Back" %}</a>
+    {% if item %}
+      <a class="btn btn-outline-secondary" href="{{ item.get_absolute_url }}" target="_blank">{% trans "View public" %}</a>
+    {% endif %}
+  </div>
+</form>
+
+<script>
+(function(){
+  const email=document.getElementById('friendly_email');
+  const phone=document.getElementById('friendly_phone');
+  const url=document.getElementById('friendly_url');
+  const ctype=document.getElementById('id_contact_type');
+  const cval=document.getElementById('id_contact_value');
+  function syncContact(){
+    if(email.value.trim()){ctype.value='email';cval.value=email.value.trim();}
+    else if(phone.value.trim()){ctype.value='phone';cval.value=phone.value.trim();}
+    else if(url.value.trim()){ctype.value='url';cval.value=url.value.trim();}
+    else{ctype.value='';cval.value='';}
+  }
+  if(ctype.value==='email') email.value=cval.value;
+  if(ctype.value==='phone') phone.value=cval.value;
+  if(ctype.value==='url') url.value=cval.value;
+
+  const radios=[...document.querySelectorAll('input[name="comp_choice"]')];
+  const compHidden=document.getElementById('id_compensation_type');
+  const fixedBlock=document.getElementById('fixed_block');
+  const doorBlock=document.getElementById('door_block');
+  const fixedAmount=document.getElementById('fixed_amount');
+  const feeHidden=document.getElementById('id_fee_amount');
+  const doorEntry=document.getElementById('door_entry');
+  const doorPayout=document.getElementById('door_payout');
+  const entryHidden=document.getElementById('id_entry_price');
+  const payoutHidden=document.getElementById('id_payout_amount');
+  function setChoice(val){
+    compHidden.value=val;
+    fixedBlock.style.display=(val==='fixed')?'':'none';
+    doorBlock.style.display=(val==='door')?'':'none';
+    fixedAmount.required=(val==='fixed');
+    doorEntry.required=doorPayout.required=(val==='door');
+  }
+  (function prefill(){
+    const current=compHidden.value||'unpaid';
+    const r=radios.find(x=>x.value===current);
+    if(r) r.checked=true;
+    setChoice(current);
+    if(feeHidden.value) fixedAmount.value=feeHidden.value;
+    if(entryHidden.value) doorEntry.value=entryHidden.value;
+    if(payoutHidden.value) doorPayout.value=payoutHidden.value;
+  })();
+  radios.forEach(r=>r.addEventListener('change',e=>setChoice(e.target.value)));
+  document.getElementById('bandForm').addEventListener('submit',()=>{
+    syncContact();
+    feeHidden.value=fixedAmount.value||'';
+    entryHidden.value=doorEntry.value||'';
+    payoutHidden.value=doorPayout.value||'';
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,470 @@
+{% extends "cms/base_cms.html" %}
+{% load static setup_tags i18n %}
+
+{% block title %}Events &middot; CMS{% endblock %}
+
+{% block extra_head %}{% endblock %}
+
+{% block extra_body %}
+  <script src="{% static 'events/events.js' %}" defer></script>
+  <script>
+    (function () {
+      function initEventDraft(form, draftKey, banner) {
+        if (!form) {
+          return;
+        }
+        const restoreBtn = banner ? banner.querySelector('[data-action="restore-draft"]') : null;
+        const discardBtn = banner ? banner.querySelector('[data-action="discard-draft"]') : null;
+        let saveTimer = null;
+
+        function collectDraft() {
+          const data = {};
+          Array.from(form.elements).forEach((el) => {
+            if (!el.name || el.type === 'submit' || el.type === 'button' || el.type === 'file') {
+              return;
+            }
+            if (el.type === 'checkbox') {
+              if (!data[el.name]) {
+                data[el.name] = [];
+              }
+              if (el.checked) {
+                data[el.name].push(el.value);
+              }
+              return;
+            }
+            if (el.type === 'radio') {
+              if (el.checked) {
+                data[el.name] = el.value;
+              }
+              return;
+            }
+            if (el.multiple) {
+              data[el.name] = Array.from(el.options)
+                .filter((opt) => opt.selected)
+                .map((opt) => opt.value);
+              return;
+            }
+            data[el.name] = el.value;
+          });
+          return { updatedAt: Date.now(), data };
+        }
+
+        function applyDraft(draft) {
+          if (!draft || !draft.data) {
+            return;
+          }
+          Array.from(form.elements).forEach((el) => {
+            if (!el.name || el.type === 'submit' || el.type === 'button' || el.type === 'file') {
+              return;
+            }
+            if (!(el.name in draft.data)) {
+              return;
+            }
+            if (el.type === 'checkbox') {
+              const values = Array.isArray(draft.data[el.name]) ? draft.data[el.name] : [];
+              el.checked = values.includes(el.value);
+              return;
+            }
+            if (el.type === 'radio') {
+              el.checked = draft.data[el.name] === el.value;
+              return;
+            }
+            if (el.multiple) {
+              const values = Array.isArray(draft.data[el.name]) ? draft.data[el.name] : [];
+              Array.from(el.options).forEach((opt) => {
+                opt.selected = values.includes(opt.value);
+              });
+              return;
+            }
+            el.value = draft.data[el.name];
+          });
+        }
+
+        function scheduleSave() {
+          if (saveTimer) {
+            clearTimeout(saveTimer);
+          }
+          saveTimer = setTimeout(() => {
+            try {
+              const payload = collectDraft();
+              localStorage.setItem(draftKey, JSON.stringify(payload));
+            } catch (err) {
+              // ignore storage errors
+            }
+          }, 500);
+        }
+
+        function clearDraft() {
+          try {
+            localStorage.removeItem(draftKey);
+          } catch (err) {
+            // ignore
+          }
+        }
+
+        function maybeShowBanner() {
+          if (!banner) {
+            return;
+          }
+          let stored = null;
+          try {
+            stored = JSON.parse(localStorage.getItem(draftKey) || 'null');
+          } catch (err) {
+            stored = null;
+          }
+          if (!stored || !stored.data) {
+            return;
+          }
+          banner.style.display = 'flex';
+          banner.style.alignItems = 'center';
+          banner.style.gap = '.5rem';
+          if (restoreBtn) {
+            restoreBtn.addEventListener('click', function () {
+              applyDraft(stored);
+              banner.style.display = 'none';
+            });
+          }
+          if (discardBtn) {
+            discardBtn.addEventListener('click', function () {
+              clearDraft();
+              banner.style.display = 'none';
+            });
+          }
+        }
+
+        Array.from(form.elements).forEach((el) => {
+          if (!el.name) {
+            return;
+          }
+          el.addEventListener('input', scheduleSave);
+          el.addEventListener('change', scheduleSave);
+        });
+
+        window.addEventListener('beforeunload', scheduleSave);
+        maybeShowBanner();
+
+        form.addEventListener('submit', function () {
+          clearDraft();
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('event-create-form');
+        const banner = document.getElementById('event-create-draft-banner');
+        const lang = document.documentElement.lang || 'en';
+        const draftKey = `event-draft:new:${lang}`;
+        initEventDraft(form, draftKey, banner);
+      });
+    })();
+  </script>
+{% endblock %}
+
+{% block content %}
+<section class="module-header">
+  <div>
+    <h1>{% trans "Events" %}</h1>
+    <p class="sub">{% trans "Create public events, manage performers, and prepare staffing." %}</p>
+  </div>
+  <div class="actions">
+    <button class="btn btn-outline" type="button" data-open-modal="#modal-category">{% trans "Manage categories" %}</button>
+    <a class="btn btn-outline btn-accent" href="{% url 'events:holidays' %}">{% trans "Manage holidays" %}</a>
+    <button class="btn btn-primary" data-open-modal="#modal-event">{% trans "+ New event" %}</button>
+  </div>
+</section>
+
+<section class="card filter-card">
+  <form id="events-filter-form" method="get" class="filter-form" autocomplete="off">
+    <input type="hidden" name="period_offset" value="{{ period_offset }}">
+    <div class="filter-nav">
+      {% if filter_nav_show %}
+        <a class="nav-arrow" href="{{ filter_nav_prev_url }}" aria-label="{% blocktrans with label=filter_timeframe_label|default:_("period") %}Previous {{ label }}{% endblocktrans %}">&#8592;</a>
+      {% endif %}
+      <span class="range-label">{{ filter_range_label }}</span>
+      {% if filter_nav_show %}
+        <a class="nav-arrow" href="{{ filter_nav_next_url }}" aria-label="{% blocktrans with label=filter_timeframe_label|default:_("period") %}Next {{ label }}{% endblocktrans %}">&#8594;</a>
+      {% endif %}
+    </div>
+    <div class="filter-grid">
+      <label>
+        <span class="label">{% trans "Title" %}</span>
+        {{ filter_form.q }}
+      </label>
+      <label>
+        <span class="label">{% trans "Timeframe" %}</span>
+        {{ filter_form.timeframe }}
+      </label>
+      <label class="checkbox">
+        {{ filter_form.include_past }}
+        <span>{% trans "Include past events" %}</span>
+      </label>
+      <div class="filter-actions">
+        <a class="btn btn-outline" href="{% url 'events:index' %}">{% trans "Reset" %}</a>
+      </div>
+    </div>
+  </form>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("events-filter-form");
+      if (!form) return;
+      const timeframe = form.querySelector('[name="timeframe"]');
+      const offset = form.querySelector('[name="period_offset"]');
+      const inputs = form.querySelectorAll('input:not([type="hidden"]), select');
+
+      function submitForm() {
+        form.requestSubmit();
+      }
+
+      inputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          if (input.name === "timeframe" && offset) {
+            offset.value = 0;
+          }
+          submitForm();
+        });
+        if (input.tagName === "INPUT") {
+          input.addEventListener("keyup", submitForm);
+        }
+      });
+    });
+  </script>
+</section>
+
+<section class="card timeline-card">
+  <h2>{% trans "Events" %}</h2>
+  <div class="event-grid">
+    {% for card in scheduled_events %}
+      {% with event=card.event %}
+      <article class="event-card">
+        <header>
+          <div class="event-card-title">
+            <a href="{% url 'events:detail' event.slug %}">{{ event.title }}</a>
+            {% if event.get_status_display %}<span class="pill">{{ event.get_status_display }}</span>{% endif %}
+            {% if card.scope_label %}<span class="pill">{{ card.scope_label }}</span>{% endif %}
+          </div>
+          <div class="event-card-meta">
+            {% if card.start_label %}<span class="pill">{{ card.start_label }}</span>{% endif %}
+            {% if card.doors_label %}<span class="pill">{% blocktrans with label=card.doors_label %}Doors {{ label }}{% endblocktrans %}</span>{% endif %}
+            {% if event.event_type == "internal" %}<span class="pill">{% trans "Internal" %}</span>{% endif %}
+            {% if card.has_shifts %}
+              <span class="pill pill-green">{% trans "Shifts enabled" %}</span>
+            {% endif %}
+          </div>
+        </header>
+        <div class="event-card-body">
+          {% if event.teaser %}<p class="teaser">{{ event.teaser }}</p>{% endif %}
+          {% if event.venue_name or event.venue_city %}
+            <p class="location">
+              {% if event.venue_name %}<strong>{{ event.venue_name }}</strong>{% endif %}
+              {% if event.venue_city %}<span class="quiet"> · {{ event.venue_city }}</span>{% endif %}
+            </p>
+          {% endif %}
+          <div class="tags">
+            {% for cat in event.categories.all %}
+              <span class="pill">{{ cat.name }}</span>
+            {% empty %}
+              <span class="quiet">{% trans "No categories" %}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <footer class="event-card-actions">
+          <a class="btn btn-card btn-card-primary" href="{{ card.edit_url }}">{% trans "Edit" %}</a>
+          {% trans "Delete this event?" as delete_prompt %}
+          <form method="post" action="{{ card.delete_url }}" onsubmit="return confirm('{{ delete_prompt }}');" class="event-delete-form">
+            {% csrf_token %}
+            {% if card.occurrence_param %}
+              <input type="hidden" name="occurrence" value="{{ card.occurrence_param }}">
+            {% endif %}
+            <button type="submit" class="btn btn-card btn-card-danger">{% trans "Delete" %}</button>
+          </form>
+        </footer>
+      </article>
+      {% endwith %}
+    {% empty %}
+      <p class="empty">{% trans "No events match the current filters." %}</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if unscheduled_events %}
+  <section class="card timeline-card">
+    <h2>{% trans "Unscheduled" %}</h2>
+    <div class="event-grid">
+      {% for card in unscheduled_events %}
+        {% with event=card.event %}
+        <article class="event-card event-card--unscheduled">
+          <header>
+            <div class="event-card-title">
+              <a href="{% url 'events:detail' event.slug %}">{{ event.title }}</a>
+              {% if event.get_status_display %}<span class="pill">{{ event.get_status_display }}</span>{% endif %}
+              <span class="pill">{% trans "Unscheduled" %}</span>
+            </div>
+          </header>
+          <div class="event-card-body">
+            {% if event.teaser %}<p class="teaser">{{ event.teaser }}</p>{% endif %}
+            <div class="tags">
+              {% for cat in event.categories.all %}
+                <span class="pill">{{ cat.name }}</span>
+              {% empty %}
+              <span class="quiet">{% trans "No categories" %}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <footer class="event-card-actions">
+            <a class="btn btn-card btn-card-primary" href="{{ card.edit_url }}">{% trans "Edit" %}</a>
+            <form method="post" action="{{ card.delete_url }}" onsubmit="return confirm('Delete this event?');" class="event-delete-form">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-card btn-card-danger">{% trans "Delete" %}</button>
+            </form>
+          </footer>
+        </article>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if recurring_series %}
+  <section class="card recurring-card">
+    <h2>{% trans "Recurring events" %}</h2>
+    <div class="recurring-grid">
+      {% for event in recurring_series %}
+        <article class="recurring-tile">
+          <header>
+            <h3><a href="{% url 'events:detail' event.slug %}">{{ event.title }}</a></h3>
+            <span class="pill">{{ event.recurrence_description }}</span>
+          </header>
+          <div class="recurring-body">
+            {% if event.recurrence_preview %}
+              <ul class="mini-list">
+                {% for occ in event.recurrence_preview|slice:":4" %}
+                  <li>{{ occ.start|date:"D, M d · H:i" }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="quiet">
+                {% if event.recurrence_has_any %}
+                  Occurs outside this timeframe.
+                {% else %}
+                  No occurrences scheduled in this timeframe.
+                {% endif %}
+              </p>
+            {% endif %}
+          </div>
+          <footer class="event-card-actions">
+            <a class="btn btn-card btn-card-primary" href="{% url 'events:edit' event.slug %}">{% trans "Manage" %}</a>
+            <form method="post" action="{% url 'events:delete' event.slug %}" onsubmit="return confirm('Delete this event?');" class="event-delete-form">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-card btn-card-danger">{% trans "Delete" %}</button>
+            </form>
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<div class="modal-overlay" id="modal-category" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-category-title">
+    <div class="modal-header">
+      <h2 id="modal-category-title">{% trans "Manage categories" %}</h2>
+      <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+    </div>
+    <div class="modal-body category-modal-body">
+      <form method="post" action="{% url 'events:category_create' %}" class="category-form">
+        {% csrf_token %}
+        <div class="form-grid">
+          {% for field in category_form %}
+            <div class="form-field">
+              {% if field.id_for_label %}
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% else %}
+                <label>{{ field.label }}</label>
+              {% endif %}
+              {{ field }}
+              {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+              {% if field.errors %}
+                <ul class="errors">
+                  {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">{% trans "Add category" %}</button>
+          <button type="button" class="btn btn-outline" data-close-modal>{% trans "Close" %}</button>
+        </div>
+      </form>
+      <div class="category-list">
+        <h3>{% trans "Existing categories" %}</h3>
+        {% if categories %}
+          <table class="data-table compact">
+            <thead>
+              <tr>
+                <th>{% trans "Name" %}</th>
+                <th>{% trans "Color" %}</th>
+                <th>{% trans "Description" %}</th>
+                <th>{% trans "Status" %}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for category in categories %}
+                <tr>
+                  <td>{{ category.name }}</td>
+                  <td>
+                    {% if category.color %}
+                      <span class="color-chip" style="background:#{{ category.color }};"></span>
+                      #{{ category.color }}
+                    {% else %}
+                      <span class="quiet">—</span>
+                    {% endif %}
+                  </td>
+                  <td>{% if category.description %}{{ category.description }}{% else %}<span class="quiet">—</span>{% endif %}</td>
+                  <td>{% if category.is_active %}<span class="pill pill-green">{% trans "Active" %}</span>{% else %}<span class="pill">{% trans "Inactive" %}</span>{% endif %}</td>
+                  <td class="row-actions">
+                    <a class="btn btn-outline" href="{% url 'events:category_edit' category.pk %}">{% trans "Edit" %}</a>
+                    <form method="post" action="{% url 'events:category_delete' category.pk %}" onsubmit="return confirm('Delete this category?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline btn-danger">{% trans "Delete" %}</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="quiet">{% trans "No categories yet." %}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Event creation modal -->
+<div class="modal-overlay" id="modal-event" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-event-title">
+    <div class="modal-header">
+      <h2 id="modal-event-title">{% trans "Create event" %}</h2>
+      <button type="button" class="iconbtn" data-close-modal aria-label="{% trans 'Close' %}">{% trans "&times;" %}</button>
+    </div>
+    <div id="event-create-draft-banner" class="alert alert-info" style="display:none; margin:0 1.5rem 1rem;">
+      <span>{% trans "Unsaved draft found for this language." %}</span>
+      <button type="button" class="btn btn-sm" data-action="restore-draft">{% trans "Restore draft" %}</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="discard-draft">{% trans "Discard" %}</button>
+    </div>
+    <form id="event-create-form" method="post" enctype="multipart/form-data" action="{% url 'events:create' %}" hx-post="{% url 'events:create' %}" hx-target="#event-form-body" hx-swap="outerHTML" class="modal-form">
+      {% csrf_token %}
+      <div id="event-form-body">
+        {% include "events/partials/event_form_body.html" with event_form=event_form performer_formset=performer_formset %}
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">{% trans "Save event" %}</button>
+        <button type="button" class="btn btn-outline" data-close-modal>{% trans "Cancel" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
